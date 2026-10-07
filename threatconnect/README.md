@@ -6,13 +6,13 @@ Resilient ThreatConnect playbook templates for common enrichment, sandboxing, an
 
 Each playbook has its own directory with a local README and importable file.
 
-- [ATD Malware Detonation](atd-malware-detonation/)
-- [Hash Intelligence via Email](hash-intelligence-email/)
-- [IPQS IP Reputation](ipqs-ip-reputation/)
-- [IPQS URL Reputation](ipqs-url-reputation/)
-- [Phishing Intake](phishing-intake/)
-- [VirusTotal Intelligence Search](virustotal-intelligence-search/)
-- [VMRay Submission and IOC Collection](vmray-submission-ioc-collection/)
+- [ATD Malware Detonation](atd/)
+- [Hash Intelligence via Email](email-hash/)
+- [IPQS IP Reputation](ip-reputation/)
+- [IPQS URL Reputation](url-reputation/)
+- [Phishing Intake](phishing/)
+- [VirusTotal Intelligence Search](virustotal/)
+- [VMRay Submission and IOC Collection](vmray/)
 
 ## Validation and configuration
 
