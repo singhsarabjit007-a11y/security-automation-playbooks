@@ -4,15 +4,15 @@ Resilient ThreatConnect playbook templates for common enrichment, sandboxing, an
 
 ## Included playbooks
 
-| Playbook | Purpose |
-| --- | --- |
-| `Resilient Hash Intelligence via Email.pbx` | Extracts MD5, SHA-1, and SHA-256 values from email, queries ThreatConnect owners, and returns results to the sender. |
-| `Resilient ATD Malware Detonation.pbx` | Submits a tagged malware document to McAfee/Trellix ATD and stores severity-mapped File indicators. |
-| `Resilient IPQS Reputation Enrichment.pbxz` | Enriches IP-address indicators using IPQualityScore reputation data. |
-| `Resilient IPQS URL Reputation Enrichment.pbxz` | Enriches URL indicators using IPQualityScore reputation data. |
-| `Resilient Phishing Intake Playbook.pbx` | Validates, password-protects, and stores submitted phishing-email attachments. |
-| `Resilient VirusTotal Intelligence Search.pbx` | Runs a validated, paginated VirusTotal Intelligence search and creates File indicators. |
-| `Resilient VMRay Submission and Results.pbx` | Submits samples to VMRay and ingests its IOC output after the asynchronous analysis completes. |
+Each playbook has its own directory with a local README and importable file.
+
+- [ATD Malware Detonation](atd-malware-detonation/)
+- [Hash Intelligence via Email](hash-intelligence-email/)
+- [IPQS IP Reputation](ipqs-ip-reputation/)
+- [IPQS URL Reputation](ipqs-url-reputation/)
+- [Phishing Intake](phishing-intake/)
+- [VirusTotal Intelligence Search](virustotal-intelligence-search/)
+- [VMRay Submission and IOC Collection](vmray-submission-ioc-collection/)
 
 ## Validation and configuration
 
