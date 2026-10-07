@@ -1,3 +1,3 @@
-# ThreatConnect playbooks
+# ThreatConnect Playbooks
 
-Add one directory per ThreatConnect playbook. Each playbook directory should contain its export, `workflow.png`, and a setup README.
+This directory is reserved for public ThreatConnect playbook templates. No ThreatConnect playbooks are published here yet.

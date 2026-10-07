@@ -1,3 +1,3 @@
-# n8n workflows
+# n8n Workflows
 
-Add one directory per n8n workflow. Each workflow directory should contain `playbook.json`, `workflow.png`, and a setup README.
+This directory is reserved for public n8n workflow templates. No n8n workflows are published here yet.
