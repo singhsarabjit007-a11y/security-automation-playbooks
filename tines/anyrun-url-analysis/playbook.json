@@ -1,0 +1,1021 @@
+{
+  "schema_version": 30,
+  "standard_lib_version": 97,
+  "action_runtime_version": 88,
+  "name": "Check URLs with Any.run",
+  "description": "Analyze suspicious URLs with Any.Run and receive an email with a summary of results, including a link to the full report once complete.\n\ntags: AnyRun, Intermediate, Analyze, Investigate, \nicons: 🏃, 🔬, 📧\nvisibility: public",
+  "guid": "21116b32864f86dbad87e6500f55e556",
+  "slug": "check_urls_with_any_run",
+  "agents": [
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Trigger Successful Submission",
+      "disabled": false,
+      "description": null,
+      "guid": "8ca2819dc98a64c0b77a26b633502058",
+      "options": {
+        "rules": [
+          {
+            "type": "field==value",
+            "value": "201",
+            "path": "<<scan_a_url_in_the_any_run_sandbox.status>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::WebhookAgent",
+      "name": "Form",
+      "disabled": false,
+      "description": "Replace the placeholder webhook secret with a newly generated secret before publishing or using this story.",
+      "guid": "0bbb320223fbeb68361b4c9fefeddd1d",
+      "options": {
+        "path": "any-run-url-analysis-template",
+        "secret": "00000000000000000000000000000000"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Wait for analysis",
+      "disabled": false,
+      "description": null,
+      "guid": "5a47e118a4cf13e686bd700cc61a558e",
+      "options": {
+        "mode": "delay",
+        "seconds": "180"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Retrieve detailed report of a recent any.run analysis by TaskId",
+      "disabled": false,
+      "description": null,
+      "guid": "276ccc3e20ed73bc68a7cc1d570c8096",
+      "options": {
+        "url": "https://api.any.run/report/<<scan_a_url_in_the_any_run_sandbox.body.data.taskid>>/summary/json",
+        "content_type": "application_json",
+        "method": "get",
+        "headers": {
+          "Authorization": "API-Key <<CREDENTIAL.any_run>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Analysis Complete",
+      "disabled": false,
+      "description": null,
+      "guid": "e059d4f285d5d0a59887a7dd7846ea62",
+      "options": {
+        "rules": [
+          {
+            "type": "field==value",
+            "value": "200",
+            "path": "<<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.status>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Analysis Not Complete",
+      "disabled": false,
+      "description": null,
+      "guid": "12b15151a16f3cb054ac27597218860c",
+      "options": {
+        "rules": [
+          {
+            "type": "field!=value",
+            "value": "200",
+            "path": "<<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.status>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Increment Counter",
+      "disabled": false,
+      "description": null,
+      "guid": "dc5a0d8eeae3b49d4b2432167d9678ef",
+      "options": {
+        "mode": "message_only",
+        "payload": {
+          "counter": "<<PLUS(increment_counter.counter, 1)>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Counter Less Than 10",
+      "disabled": false,
+      "description": null,
+      "guid": "5e2e048541fe91a92826ed7f023b6b98",
+      "options": {
+        "rules": [
+          {
+            "type": "field<=value",
+            "value": "10",
+            "path": "<<increment_counter.counter>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Delay Event",
+      "disabled": false,
+      "description": null,
+      "guid": "0c2e38045f876524e80372c54730616d",
+      "options": {
+        "mode": "delay",
+        "seconds": "60"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::EmailAgent",
+      "name": "Send Error Email",
+      "disabled": false,
+      "description": null,
+      "guid": "968c4181447de193d6ba38996ac3852e",
+      "options": {
+        "recipients": [
+          "<<analyze_suspicious_urls_with_any_run_form.body.email>>"
+        ],
+        "subject": "ERROR Any.run File Analysis Results - <<DATE(\"now\", \"%Y-%m-%d\")>>",
+        "body": "An error has occurred when attempting to pull results from Any.run.<br>\nPlease check story: <a href=\"<<APPEND(META.tenant.domain, \"/stories/\") |> APPEND(%, META.story.id)>>\"><<META.story.name>></a>"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Counter Greater Than 10",
+      "disabled": false,
+      "description": null,
+      "guid": "1548af980de50f687c836a5a44af82ce",
+      "options": {
+        "rules": [
+          {
+            "type": "field>value",
+            "value": "10",
+            "path": "<<increment_counter.counter>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Trigger Unsuccessful Submission",
+      "disabled": false,
+      "description": null,
+      "guid": "747114db35ce87717df6a0fb81a9828d",
+      "options": {
+        "rules": [
+          {
+            "type": "field!=value",
+            "value": "201",
+            "path": "<<scan_a_url_in_the_any_run_sandbox.status>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::EmailAgent",
+      "name": "Email Error",
+      "disabled": false,
+      "description": null,
+      "guid": "bdaabf97fca33da64c8619f9742c0de0",
+      "options": {
+        "recipients": [
+          "<<analyze_suspicious_urls_with_any_run_form.body.email>>"
+        ],
+        "subject": "Any.run File Analysis Error - <<DATE(\"now\", \"%Y-%m-%d\")>>",
+        "body": "An error has occurred when submitting file to Any.Run<br>\n\nPlease check story: <a href=\"<<APPEND(META.tenant.domain, \"/stories/\") |> APPEND(%, META.story.id)>>\"><<META.story.name>></a>"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::FormAgent",
+      "name": "Analyze suspicious URLs with Any.run Form",
+      "disabled": false,
+      "description": "Submit a URL for analysis on Any.run",
+      "guid": "7c37032910d45fde4b157f41981b00b0",
+      "options": {
+        "fields": "",
+        "mode": "success_page",
+        "submissionMessage": "Thank you for your submission",
+        "url_identifier": "example",
+        "visibility": "world",
+        "pages_background_color": "#F9F9F9",
+        "page_logo": {
+          "name": "nites.jpeg",
+          "type": "image/jpeg",
+          "contents": "iVBORw0KGgoAAAANSUhEUgAAAFQAAAAYCAYAAABk8drWAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAARCSURBVHgB7VhLctpAEB1k7LVyA/kEgRMEn8BQ5e8qcALjE1icAPsEkJW/VeATwA1QTmDlBCE7l3/kPblbTIiMJcVOeaFXBRrN9Mz0vOnu6ZExBQoUKFCgwAdByX4ZDAbuw8PDwWw2a+LVk+rAcZxgZWWl02g0QpMSl5eXXRlnvLq62kLfqcmIi4uLZqlU+lwulztJ/aGvJ/p+39nZ6cu8R3j30c/f3t7umP8MRwtXV1df7+/vb6iMmZNJVJ6enppom5ydnbVNCpAIjENZF786Fn1kMgLE1PDocRz0HyTJQKe2zNOjMbBO3o1sZgS2Ybw29KqYd0ZEKMg8AGl980zAS3BhqV0Sv0Qmsho8/iCQi5T6XED/WtJmoj7W9/b2Vgk9gXUGWM+JtoF4H/VdFEdK/HvB4UIxuZ+2A2SPlykFayLhXkJ9z/wDsJlHaTZld3fXR4ho7O3tHWudRbyrxC+Ca+L4rxFuyXlJ7c7j4yOtKcuuuXd3d+0XJvMkZPwFWpm4cV64sLTBawuGB/UYus7Pz7vUB3NOYLGxV+EsuIHrT2ydITNCn5/sxyfaKdO0x02Qo8wNY7Yt52ChmeOKraAN2ZxlyBxLZb6xFCuvxWN4UE361PGYYn1egli0KSQJxIy42VIfso959rCehplFOYYUkY0MCJvn68C5CDUJLi2ho7msExVa3Pk0QL9veJxIuZ3W0pkZIMNYR3GodSBjA3VVlsUAPK1HprCOuqoQpmHGRV3FzNfcQvZQpSx06YjcFx3fMW8E7mBK0W6egwEk+ObZKkjqIO0hR1Ih/0vfYeGhpmAwgLpUX4OkMQv7+/shCNV0i+GtBrlYX5Kn2QLjNTeCMVvby6KkZ7IhsF/E6jyTDhqDfZMBJAHzUHHGP1cOuR8mJ05PTz0zPzs2MfZM20BgLAfCXGzmEAYTWbN4YRPy3JQxNusauo1V3hF3yopg4T1TbISSB3nSKLhZgL6HLDN8oLxp3ga8vPSTfnD3MTcTzw1ypeHASI6NX88+5Jy1tTWmF1luMRw8voHIKeeZbHBTHGCJgGseW4dU7pySrm3m6w62trZa9o/kQcdrkTNwaw9c8fZVhcV+oqtb5FY0DDgSTw7TKgKT7+gkhH0jyQK6Tt4kG+7eMtmMIAasLj6ELULqtsfw8oJ1jdA+YGjgLYvvPCcoR84Yc63+UWiIxucf78HiSsuUZFvLTpgF73rzSAI3FMS0MnQJtUCSmD/KdwvdGFfyygnb5NZIBGI8ShzTpwnzUcpaWU2oh1p8ytOVmDIsxIlImOkB0w/9AGFDFhaabJhCmcNlH0zgYoGxXHKxHW451LSF86vXQPdQ6sYqy7BmhYlofs7NPpImaZumR5y3jzVvsFLI0nW6ko9WRG6oaVg0v/nA0JCwjHhx1aktw3jGA+yF8dykr2ZisRVsZLg4XpIcSGWOG+b5ilagQIECBZLxG5sJ41WbSDouAAAAAElFTkSuQmCC\n",
+          "display_logo": true
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Scan a URL in the ANY.RUN Sandbox",
+      "disabled": false,
+      "description": "Send a URL for analysis in the ANY.RUN sandbox",
+      "guid": "33732c5d7128d125406689597dcf3cc1",
+      "options": {
+        "url": "https://api.any.run/v1/analysis/",
+        "content_type": "json",
+        "method": "post",
+        "payload": {
+          "obj_type": "url",
+          "obj_url": "<<analyze_suspicious_urls_with_any_run_form.body.url>>"
+        },
+        "headers": {
+          "Authorization": "API-Key <<CREDENTIAL.any_run>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": "c71b811e4eac02dc2b22e107f214c623f61c6d62c173568a1d566ee8bb413fe9",
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Event Transform",
+      "disabled": false,
+      "description": null,
+      "guid": "066da3ddb4de618f6ddd368b7ad2d24f",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": {
+          "mode": "message_only",
+          "payload": {
+            "task_id": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.uuid",
+            "report_url": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.permanentUrl",
+            "verdict": {
+              "text": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.scores.verdict.threatLevelText",
+              "score": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.scores.verdict.score",
+              "threat_level": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.scores.verdict.threatLevel"
+            },
+            "url": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.content.mainObject.url",
+            "hashes": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.content.mainObject.hashes",
+            "exports": {
+              "ioc": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.reports.IOC",
+              "stix": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.reports.STIX",
+              "misp": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.reports.MISP"
+            },
+            "mitre": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.mitre",
+            "incidents": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.incidents",
+            "network": {
+              "threats": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.network.threats",
+              "dns_requests": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.network.dnsRequests",
+              "http_requests": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.network.httpRequests",
+              "connections": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.network.connections"
+            },
+            "processes": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.processes",
+            "modified_files": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.modified.files",
+            "counters": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.counters",
+            "pcap_url": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.content.pcap.permanentUrl",
+            "video_url": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.content.video.permanentUrl",
+            "screenshots": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.content.screenshots"
+          }
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Report",
+      "disabled": false,
+      "description": "Report c",
+      "guid": "472b9a36d8a30e342230f18030e2d775",
+      "options": {
+        "url": "<<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.reports.TIER1>>",
+        "method": "get",
+        "headers": {
+          "Authorization": "API-Key <<CREDENTIAL.any_run>>",
+          "Accept": "application/json"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": "8b7f09135d09c96a1d4ea1b67f7dcec2a3cd8ea535537bc7f44ca190443583c2",
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Event Transform",
+      "disabled": false,
+      "description": null,
+      "guid": "6f24ee9fdf27769d1b8084afa4e297d4",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": {
+          "mode": "message_only",
+          "payload": {
+            "task_id": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.uuid",
+            "url": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.content.mainObject.url",
+            "report_url": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.permanentUrl",
+            "verdict": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.scores.verdict.threatLevelText",
+            "hashes": "=retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.content.mainObject.hashes",
+            "ai_summary": "<<report.body.aiSummary>>"
+          }
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Analysis Not Complete",
+      "disabled": false,
+      "description": null,
+      "guid": "5883811a109ecd820408339af47d1882",
+      "options": {
+        "rules": [
+          {
+            "type": "field==value",
+            "value": "Task is still running",
+            "path": "<<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.message>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Event Transform",
+      "disabled": false,
+      "description": null,
+      "guid": "854d5f9bea447762b45343343528cfba",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": {
+          "mode": "message_only",
+          "payload": {
+            "response_code": "<<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.status>>",
+            "message": "<<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.message>>"
+          }
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EmailAgent",
+      "name": "Email Error",
+      "disabled": false,
+      "description": null,
+      "guid": "dc1e3689e7d03923fa551775bb962a6d",
+      "options": {
+        "recipients": [
+          "<<analyze_suspicious_urls_with_any_run_form.body.email>>"
+        ],
+        "subject": "ANY.RUN File Analysis Error - <<DATE(\"now\", \"%Y-%m-%d\")>>",
+        "body": "{\r\n  \"recipients\": [\r\n    \"<<file_submission_form.body.email>>\"\r\n  ],\r\n  \"subject\": \"ANY.RUN File Analysis Error - <<DATE(\\\"now\\\", \\\"%Y-%m-%d\\\")>>\",\r\n  \"body\": \"ANY.RUN could not retrieve the analysis report.<br><br><strong>Response code:</strong> <<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.status>><br><strong>Message:</strong> <<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.message>><br><br>Please check story: <a href=\\\"<<APPEND(META.tenant.domain, \\\"/stories/\\\") |> APPEND(%, META.story.id)>>\\\"><<META.story.name>></a>\"\r\n}>>"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    }
+  ],
+  "diagram_notes": [
+    {
+      "content": "# **Any.Run URL Analysis**\n---- \n\nFill in the form with a suspicious URL and email and this story will create a Task on Any.run and analyse the URL. \n\nA simple result email will be sent to the provided email address. \n\n",
+      "position": [
+        930,
+        -90
+      ],
+      "guid": "a768f904c896c9d91ada033fd3a4024a",
+      "width": 290
+    },
+    {
+      "content": "Continues only when ANY.RUN accepts the URL and returns HTTP `201 Created`.\n",
+      "position": [
+        105,
+        240
+      ],
+      "guid": "f6e9ae0a9bc97a29a72d49d2331b9e07",
+      "width": 290
+    },
+    {
+      "content": "Continues when ANY.RUN returns HTTP `200 OK`.\n",
+      "position": [
+        840,
+        510
+      ],
+      "guid": "d9155cc8cc62331cb2305c93361a3148",
+      "width": 355
+    },
+    {
+      "content": "Extracts the useful report details—URL, verdict, report link, hashes, and AI summary—into a simpler output for notification.\n",
+      "position": [
+        960,
+        735
+      ],
+      "guid": "261170b9db85e58475233d88b99f5186",
+      "width": 290
+    },
+    {
+      "content": "Objective: Automate the safe triage of suspicious URLs by submitting them to ANY.RUN, monitoring the sandbox-analysis task, collecting the completed report and AI summary, and notifying the requester by email.\n",
+      "position": [
+        241,
+        -174
+      ],
+      "guid": "a4ccc11ce84f59aa9079fd92b08724d7",
+      "width": 960
+    },
+    {
+      "content": "**Disclaimer**: This is a proof-of-concept playbook and is not production-ready. Before production use, implement access controls, URL and input validation, credential and secret management, error handling, monitoring, rate limiting, approval workflows, and organization-approved data-sharing, privacy, and retention policies. Only submit URLs that your organization is authorized to share with ANY.RUN.\n",
+      "position": [
+        240,
+        -285
+      ],
+      "guid": "b707e65932863f353dca3af48c52f3a6",
+      "width": 960
+    }
+  ],
+  "links": [
+    {
+      "source": 0,
+      "receiver": 2
+    },
+    {
+      "source": 2,
+      "receiver": 3
+    },
+    {
+      "source": 3,
+      "receiver": 4
+    },
+    {
+      "source": 3,
+      "receiver": 5
+    },
+    {
+      "source": 4,
+      "receiver": 16
+    },
+    {
+      "source": 5,
+      "receiver": 18
+    },
+    {
+      "source": 6,
+      "receiver": 7
+    },
+    {
+      "source": 6,
+      "receiver": 10
+    },
+    {
+      "source": 7,
+      "receiver": 8
+    },
+    {
+      "source": 8,
+      "receiver": 3
+    },
+    {
+      "source": 10,
+      "receiver": 9
+    },
+    {
+      "source": 11,
+      "receiver": 12
+    },
+    {
+      "source": 13,
+      "receiver": 14
+    },
+    {
+      "source": 14,
+      "receiver": 0
+    },
+    {
+      "source": 14,
+      "receiver": 11
+    },
+    {
+      "source": 15,
+      "receiver": 17
+    },
+    {
+      "source": 16,
+      "receiver": 15
+    },
+    {
+      "source": 18,
+      "receiver": 6
+    },
+    {
+      "source": 18,
+      "receiver": 19,
+      "link_type": "secondary"
+    },
+    {
+      "source": 19,
+      "receiver": 20
+    }
+  ],
+  "diagram_layout": "{\"066da3ddb4de618f6ddd368b7ad2d24f\":[855,675],\"0bbb320223fbeb68361b4c9fefeddd1d\":[420,90],\"0c2e38045f876524e80372c54730616d\":[420,855],\"12b15151a16f3cb054ac27597218860c\":[420,525],\"1548af980de50f687c836a5a44af82ce\":[165,780],\"276ccc3e20ed73bc68a7cc1d570c8096\":[420,420],\"33732c5d7128d125406689597dcf3cc1\":[420,165],\"472b9a36d8a30e342230f18030e2d775\":[660,600],\"5883811a109ecd820408339af47d1882\":[420,600],\"5a47e118a4cf13e686bd700cc61a558e\":[420,345],\"5e2e048541fe91a92826ed7f023b6b98\":[420,780],\"6f24ee9fdf27769d1b8084afa4e297d4\":[855,855],\"747114db35ce87717df6a0fb81a9828d\":[675,255],\"7c37032910d45fde4b157f41981b00b0\":[630,-90],\"854d5f9bea447762b45343343528cfba\":[630,675],\"8ca2819dc98a64c0b77a26b633502058\":[420,255],\"968c4181447de193d6ba38996ac3852e\":[165,855],\"bdaabf97fca33da64c8619f9742c0de0\":[675,345],\"dc1e3689e7d03923fa551775bb962a6d\":[630,855],\"dc5a0d8eeae3b49d4b2432167d9678ef\":[420,675],\"e059d4f285d5d0a59887a7dd7846ea62\":[660,525]}",
+  "story_library_metadata": {},
+  "monitor_failures": false,
+  "synchronous_webhooks_enabled": false,
+  "integrations": [],
+  "sections": [],
+  "parent_only_send_to_story": false,
+  "send_to_story_timeout_enabled": false,
+  "send_to_story_timeout_duration_seconds": null,
+  "keep_events_for": 86400,
+  "reporting_status": true,
+  "send_to_story_enabled": false,
+  "entry_agent_guid": null,
+  "exit_agent_guids": [],
+  "api_entry_action_guids": [],
+  "api_exit_action_guids": [],
+  "send_to_story_access": null,
+  "send_to_story_access_source": 0,
+  "send_to_story_skill_use_requires_confirmation": true,
+  "pages": [
+    {
+      "containers": [
+        {
+          "guid": "12a8cef9289a80ec859cf83b36a38622",
+          "ranking": 0,
+          "category": 0,
+          "name": "Container",
+          "layout": "vertical",
+          "alignment": "no_alignment",
+          "loop": "",
+          "spacing": "no_spacing",
+          "user_driven_loop": false
+        },
+        {
+          "guid": "ddc264a78e577719b5d4e9ec7079599c",
+          "ranking": 1,
+          "category": 0,
+          "name": "Container",
+          "layout": "vertical",
+          "alignment": "no_alignment",
+          "loop": "",
+          "spacing": "no_spacing",
+          "user_driven_loop": false
+        },
+        {
+          "guid": "7f2fe27f0d58a2aa9739c15019f95ad6",
+          "ranking": 2,
+          "category": 0,
+          "name": "Container",
+          "layout": "vertical",
+          "alignment": "no_alignment",
+          "loop": "",
+          "spacing": "no_spacing",
+          "user_driven_loop": false
+        },
+        {
+          "guid": "daff1d30ffbf4dc43f6bdccf46df2854",
+          "ranking": 3,
+          "category": 0,
+          "name": "Container",
+          "layout": "vertical",
+          "alignment": "no_alignment",
+          "loop": "",
+          "spacing": "no_spacing",
+          "user_driven_loop": false
+        },
+        {
+          "guid": "193cc61ff4c3dc62fb2b775ed2c9e135",
+          "ranking": 4,
+          "category": 0,
+          "name": "Container",
+          "layout": "vertical",
+          "alignment": "no_alignment",
+          "loop": "",
+          "spacing": "no_spacing",
+          "user_driven_loop": false
+        }
+      ],
+      "conditions": [],
+      "fields": [
+        {
+          "guid": "ab010b17f735870fa4255e6e428c6f2c",
+          "name": "Analyze suspicious URLs with Any.run Form",
+          "description": "",
+          "type": "TITLE",
+          "ranking": 0,
+          "container_guid": "12a8cef9289a80ec859cf83b36a38622",
+          "width": "AUTO",
+          "width_type": "FLEX_WIDTH",
+          "width_fixed_px": 0,
+          "content": "Analyze suspicious URLs with Any.run Form"
+        },
+        {
+          "guid": "b03c391a73f7dbfbb53a1a0ff6749f42",
+          "name": "Submit a URL for analysis on Any.run",
+          "description": "",
+          "type": "PARAGRAPH",
+          "ranking": 0,
+          "container_guid": "ddc264a78e577719b5d4e9ec7079599c",
+          "width": "AUTO",
+          "width_type": "FLEX_WIDTH",
+          "width_fixed_px": 0,
+          "content": "Submit a URL for analysis on Any.run"
+        },
+        {
+          "guid": "57640522302541e1aa2b837fc9091c25",
+          "name": "Email",
+          "description": "",
+          "type": "SHORT_TEXT",
+          "ranking": 0,
+          "container_guid": "7f2fe27f0d58a2aa9739c15019f95ad6",
+          "width": "AUTO",
+          "width_type": "FLEX_WIDTH",
+          "width_fixed_px": 0,
+          "required": false,
+          "default_value": null,
+          "max_characters": null,
+          "validation_pattern": null,
+          "validation_error_message": null
+        },
+        {
+          "guid": "c5c854b6fc0d339bc22557a72ed2dc47",
+          "name": "artifact_id",
+          "description": "",
+          "type": "SHORT_TEXT",
+          "ranking": 1,
+          "container_guid": "7f2fe27f0d58a2aa9739c15019f95ad6",
+          "width": "AUTO",
+          "width_type": "FLEX_WIDTH",
+          "width_fixed_px": 0,
+          "required": false,
+          "default_value": null,
+          "max_characters": null,
+          "validation_pattern": null,
+          "validation_error_message": null
+        },
+        {
+          "guid": "f88b692e70aea453b7e81810ed95f6e7",
+          "name": "URL",
+          "description": "",
+          "type": "SHORT_TEXT",
+          "ranking": 0,
+          "container_guid": "daff1d30ffbf4dc43f6bdccf46df2854",
+          "width": "AUTO",
+          "width_type": "FLEX_WIDTH",
+          "width_fixed_px": 0,
+          "required": true,
+          "default_value": null,
+          "max_characters": null,
+          "validation_pattern": null,
+          "validation_error_message": null
+        },
+        {
+          "guid": "a92960550a18a057f46811df843a1b49",
+          "name": "Submit form",
+          "description": "",
+          "type": "BUTTON",
+          "ranking": 0,
+          "container_guid": "193cc61ff4c3dc62fb2b775ed2c9e135",
+          "width": "AUTO",
+          "width_type": "FLEX_WIDTH",
+          "width_fixed_px": 0,
+          "content": "Submit form",
+          "default_value": null,
+          "style": "primary"
+        }
+      ],
+      "visibility": "world",
+      "agent_guid": "7c37032910d45fde4b157f41981b00b0",
+      "success_message": "Thank you for your submission",
+      "loading_message": "",
+      "logo_contents": "iVBORw0KGgoAAAANSUhEUgAAAFQAAAAYCAYAAABk8drWAAAACXBIWXMAAAsT\nAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAARCSURB\nVHgB7VhLctpAEB1k7LVyA/kEgRMEn8BQ5e8qcALjE1icAPsEkJW/VeATwA1Q\nTmDlBCE7l3/kPblbTIiMJcVOeaFXBRrN9Mz0vOnu6ZExBQoUKFCgwAdByX4Z\nDAbuw8PDwWw2a+LVk+rAcZxgZWWl02g0QpMSl5eXXRlnvLq62kLfqcmIi4uL\nZqlU+lwulztJ/aGvJ/p+39nZ6cu8R3j30c/f3t7umP8MRwtXV1df7+/vb6iM\nmZNJVJ6enppom5ydnbVNCpAIjENZF786Fn1kMgLE1PDocRz0HyTJQKe2zNOj\nMbBO3o1sZgS2Ybw29KqYd0ZEKMg8AGl980zAS3BhqV0Sv0Qmsho8/iCQi5T6\nXED/WtJmoj7W9/b2Vgk9gXUGWM+JtoF4H/VdFEdK/HvB4UIxuZ+2A2SPlykF\nayLhXkJ9z/wDsJlHaTZld3fXR4ho7O3tHWudRbyrxC+Ca+L4rxFuyXlJ7c7j\n4yOtKcuuuXd3d+0XJvMkZPwFWpm4cV64sLTBawuGB/UYus7Pz7vUB3NOYLGx\nV+EsuIHrT2ydITNCn5/sxyfaKdO0x02Qo8wNY7Yt52ChmeOKraAN2ZxlyBxL\nZb6xFCuvxWN4UE361PGYYn1egli0KSQJxIy42VIfso959rCehplFOYYUkY0M\nCJvn68C5CDUJLi2ho7msExVa3Pk0QL9veJxIuZ3W0pkZIMNYR3GodSBjA3VV\nlsUAPK1HprCOuqoQpmHGRV3FzNfcQvZQpSx06YjcFx3fMW8E7mBK0W6egwEk\n+ObZKkjqIO0hR1Ih/0vfYeGhpmAwgLpUX4OkMQv7+/shCNV0i+GtBrlYX5Kn\n2QLjNTeCMVvby6KkZ7IhsF/E6jyTDhqDfZMBJAHzUHHGP1cOuR8mJ05PTz0z\nPzs2MfZM20BgLAfCXGzmEAYTWbN4YRPy3JQxNusauo1V3hF3yopg4T1TbISS\nB3nSKLhZgL6HLDN8oLxp3ga8vPSTfnD3MTcTzw1ypeHASI6NX88+5Jy1tTWm\nF1luMRw8voHIKeeZbHBTHGCJgGseW4dU7pySrm3m6w62trZa9o/kQcdrkTNw\naw9c8fZVhcV+oqtb5FY0DDgSTw7TKgKT7+gkhH0jyQK6Tt4kG+7eMtmMIAas\nLj6ELULqtsfw8oJ1jdA+YGjgLYvvPCcoR84Yc63+UWiIxucf78HiSsuUZFvL\nTpgF73rzSAI3FMS0MnQJtUCSmD/KdwvdGFfyygnb5NZIBGI8ShzTpwnzUcpa\nWU2oh1p8ytOVmDIsxIlImOkB0w/9AGFDFhaabJhCmcNlH0zgYoGxXHKxHW45\n1LSF86vXQPdQ6sYqy7BmhYlofs7NPpImaZumR5y3jzVvsFLI0nW6ko9WRG6o\naVg0v/nA0JCwjHhx1aktw3jGA+yF8dykr2ZisRVsZLg4XpIcSGWOG+b5ilag\nQIECBZLxG5sJ41WbSDouAAAAAElFTkSuQmCC\n",
+      "logo_filename": "nites.jpeg",
+      "display_logo": false,
+      "icon": ":microscope:",
+      "sso_groups": [
+        "group"
+      ],
+      "display_mode": "bordered",
+      "app": null
+    }
+  ],
+  "tags": [],
+  "time_saved_unit": "minutes",
+  "time_saved_value": 0,
+  "recipients": [],
+  "integration_product": null,
+  "integration_vendor": null,
+  "llm_product_instructions": "",
+  "start_reference": null,
+  "app_endpoints": [],
+  "send_to_stories": []
+}

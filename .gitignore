@@ -1,0 +1,8 @@
+# Ignore local secrets and exports
+.env
+.env.*
+*.pem
+*.key
+*.pfx
+secrets/
+credentials/

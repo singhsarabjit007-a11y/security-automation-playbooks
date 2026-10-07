@@ -1,0 +1,929 @@
+{
+  "schema_version": 30,
+  "standard_lib_version": 97,
+  "action_runtime_version": 88,
+  "name": "Enriching IP",
+  "description": null,
+  "guid": "f6c78504240b401d84c117850191a0dc",
+  "slug": "enriching_ip",
+  "agents": [
+    {
+      "type": "Agents::WebhookAgent",
+      "name": "Webhook",
+      "disabled": false,
+      "description": "Replace the placeholder webhook secret with a newly generated secret before publishing or using this story.",
+      "guid": "e829023e6ad381c624c80bc4279362ad",
+      "options": {
+        "path": "ip-enrichment-template",
+        "secret": "00000000000000000000000000000000",
+        "verbs": "get,post"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::RunScriptAgent",
+      "name": "Run Script",
+      "disabled": false,
+      "description": null,
+      "guid": "bcb1c5efdf4be0662db84d3d4cf2ff0e",
+      "options": {
+        "language": "python_3_13",
+        "script": "def parse_json_string_array(value):\n    if not isinstance(value, str):\n        return None\n\n    index = 0\n    length = len(value)\n\n    def skip_whitespace(position):\n        while position < length and value[position] in \" \\t\\r\\n\":\n            position += 1\n        return position\n\n    index = skip_whitespace(index)\n\n    if index >= length or value[index] != \"[\":\n        return None\n\n    index += 1\n    result = []\n\n    while True:\n        index = skip_whitespace(index)\n\n        if index < length and value[index] == \"]\":\n            index += 1\n            return result if skip_whitespace(index) == length else None\n\n        if index >= length or value[index] != '\"':\n            return None\n\n        index += 1\n        item = \"\"\n\n        while index < length:\n            char = value[index]\n            index += 1\n\n            if char == '\"':\n                break\n\n            if char == \"\\\\\":\n                if index >= length:\n                    return None\n\n                escaped = value[index]\n                index += 1\n\n                escapes = {\n                    '\"': '\"',\n                    \"\\\\\": \"\\\\\",\n                    \"/\": \"/\",\n                    \"b\": \"\\b\",\n                    \"f\": \"\\f\",\n                    \"n\": \"\\n\",\n                    \"r\": \"\\r\",\n                    \"t\": \"\\t\"\n                }\n\n                if escaped not in escapes:\n                    return None\n\n                item += escapes[escaped]\n            else:\n                item += char\n        else:\n            return None\n\n        result.append(item)\n        index = skip_whitespace(index)\n\n        if index < length and value[index] == \",\":\n            index += 1\n        elif index < length and value[index] == \"]\":\n            index += 1\n            return result if skip_whitespace(index) == length else None\n        else:\n            return None\n\n\ndef parse_ipv4(value):\n    parts = value.split(\".\")\n\n    if len(parts) != 4:\n        return None\n\n    numbers = []\n\n    for part in parts:\n        if not part or any(char not in \"0123456789\" for char in part):\n            return None\n\n        if len(part) > 1 and part[0] == \"0\":\n            return None\n\n        number = int(part)\n\n        if number > 255:\n            return None\n\n        numbers.append(number)\n\n    return numbers, \".\".join(str(number) for number in numbers)\n\n\ndef ipv4_is_public(numbers):\n    ip_number = (\n        (numbers[0] << 24)\n        + (numbers[1] << 16)\n        + (numbers[2] << 8)\n        + numbers[3]\n    )\n\n    non_public_ranges = [\n        (0x00000000, 0x00FFFFFF),  # 0.0.0.0/8\n        (0x0A000000, 0x0AFFFFFF),  # 10.0.0.0/8\n        (0x64400000, 0x647FFFFF),  # 100.64.0.0/10\n        (0x7F000000, 0x7FFFFFFF),  # 127.0.0.0/8\n        (0xA9FE0000, 0xA9FEFFFF),  # 169.254.0.0/16\n        (0xAC100000, 0xAC1FFFFF),  # 172.16.0.0/12\n        (0xC0A80000, 0xC0A8FFFF),  # 192.168.0.0/16\n        (0xE0000000, 0xFFFFFFFF)   # Multicast/reserved\n    ]\n\n    return not any(\n        start <= ip_number <= end\n        for start, end in non_public_ranges\n    )\n\n\ndef inspect_ip(raw_ip, attribute_id):\n    result = {\n        \"attribute_id\": attribute_id,\n        \"original_ip\": raw_ip,\n        \"normalized_ip\": None,\n        \"ip_is_public\": False,\n        \"ip_is_valid\": False\n    }\n\n    # No trimming, replacement, or sanitization occurs.\n    # Values such as \"8.8.8.8}\" remain invalid.\n    if not isinstance(raw_ip, str):\n        return result\n\n    parsed = parse_ipv4(raw_ip)\n\n    if parsed is None:\n        return result\n\n    numbers, normalized_ip = parsed\n\n    result[\"normalized_ip\"] = normalized_ip\n    result[\"ip_is_public\"] = ipv4_is_public(numbers)\n    result[\"ip_is_valid\"] = True\n\n    return result\n\n\ndef main(input):\n    raw_ips = input.get(\"ips\", [])\n\n    ips = (\n        raw_ips\n        if isinstance(raw_ips, list)\n        else parse_json_string_array(raw_ips)\n    )\n\n    if ips is None:\n        ips = [raw_ips]\n\n    valid_ips = []\n\n    for index, ip in enumerate(ips):\n        ip_result = inspect_ip(ip, index + 1)\n\n        if ip_result[\"ip_is_valid\"]:\n            valid_ips.append(ip_result)\n\n    return {\n        \"ips\": valid_ips\n    }",
+        "requirements": "requests==2.34.2",
+        "input": {
+          "ips": "<<webhook.body.ips>>"
+        },
+        "timeout": "10",
+        "emit_failure_event": true
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Input Array",
+      "disabled": false,
+      "description": null,
+      "guid": "6a4ad84f59bba532763caefd9d58fb4c",
+      "options": {
+        "mode": "explode",
+        "path": "=run_script.output.ips",
+        "to": "individual_item",
+        "limit": "500"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Event Transform",
+      "disabled": false,
+      "description": null,
+      "guid": "fb7f5f4de4e6a2dab7455a9c2327791d",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": {
+          "ip": "=condition.normalized_ip",
+          "vt_malicious": "=search_for_ip_address.body.data.attributes.last_analysis_stats.malicious",
+          "vt_suspicious": "=search_for_ip_address.body.data.attributes.last_analysis_stats.suspicious",
+          "vt_harmless": "=search_for_ip_address.body.data.attributes.last_analysis_stats.harmless",
+          "vt_undetected": "=search_for_ip_address.body.data.attributes.last_analysis_stats.undetected",
+          "vt_reputation": "=search_for_ip_address.body.data.attributes.reputation",
+          "vt_malicious_votes": "=search_for_ip_address.body.data.attributes.total_votes.malicious",
+          "vt_harmless_votes": "=search_for_ip_address.body.data.attributes.total_votes.harmless",
+          "vt_last_analysis_date": "=search_for_ip_address.body.data.attributes.last_analysis_date",
+          "country": "=search_for_ip_address.body.data.attributes.country",
+          "asn": "=search_for_ip_address.body.data.attributes.asn",
+          "as_owner": "=search_for_ip_address.body.data.attributes.as_owner",
+          "network": "=search_for_ip_address.body.data.attributes.network",
+          "continent": "=search_for_ip_address.body.data.attributes.continent",
+          "regional_internet_registry": "=search_for_ip_address.body.data.attributes.regional_internet_registry",
+          "whois": "=search_for_ip_address.body.data.attributes.whois",
+          "whois_date": "=search_for_ip_address.body.data.attributes.whois_date",
+          "tags": "=search_for_ip_address.body.data.attributes.tags"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Condition",
+      "disabled": false,
+      "description": null,
+      "guid": "666d13eb07697afc5ed323fb50a0b886",
+      "options": {
+        "rules": [
+          {
+            "type": "formula",
+            "path": "=input_array.individual_item.ip_is_public"
+          }
+        ],
+        "customize_output": "=input_array.individual_item"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": true,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Search for IP Address",
+      "disabled": false,
+      "description": "Search for an IP Address in VirusTotal. Report returns asn information, download samples, resolutions, detected and undetected urls etc.\n\nLink to documentation: https://virustotal.readme.io/reference/ip-info",
+      "guid": "069430794e7d6ee55111cac9b8166056",
+      "options": {
+        "url": "https://www.virustotal.com/api/v3/ip_addresses/<<condition.normalized_ip>>",
+        "method": "get",
+        "headers": {
+          "accept": "application/json",
+          "x-apikey": "<<CREDENTIAL.virustotal>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": "6ec39048bdf2b511750207e63fe891d5bc9584dc3898999be867f46854170db4",
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "AbuseIPDB",
+      "disabled": false,
+      "description": "The check endpoint accepts a single IP address (v4 or v6). Optionally you may set the maxAgeInDays parameter to only return reports within the last x amount of days.\n\nLink to documentation: https://docs.abuseipdb.com/#check-endpoint",
+      "guid": "3b97c95e5b8977ead62332cbe82305fc",
+      "options": {
+        "url": "https://api.abuseipdb.com/api/v2/check",
+        "method": "get",
+        "headers": {
+          "Accept": "application/json",
+          "Key": "<<CREDENTIAL.abuseipdb>>"
+        },
+        "payload": {
+          "ipAddress": "=condition.normalized_ip",
+          "maxAgeInDays": 90
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": "1a072bd54133a426c0c0cc4e11a112b7cb84fa12365754aa1516a3c60d2a99da",
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Event Transform",
+      "disabled": false,
+      "description": null,
+      "guid": "c15d926ebf0f879be1398c8a9b899368",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": {
+          "ip": "=condition.normalized_ip",
+          "abuse_confidence_score": "=abuseipdb.body.data.abuseConfidenceScore",
+          "abuse_total_reports": "=abuseipdb.body.data.totalReports",
+          "abuse_distinct_reporters": "=abuseipdb.body.data.numDistinctUsers",
+          "abuse_last_reported_at": "=abuseipdb.body.data.lastReportedAt",
+          "country_code": "=abuseipdb.body.data.countryCode",
+          "usage_type": "=abuseipdb.body.data.usageType",
+          "isp": "=abuseipdb.body.data.isp",
+          "domain": "=abuseipdb.body.data.domain",
+          "hostnames": "=abuseipdb.body.data.hostnames",
+          "is_tor": "=abuseipdb.body.data.isTor",
+          "asn": "=search_for_ip_address.body.data.attributes.asn",
+          "as_owner": "=search_for_ip_address.body.data.attributes.as_owner",
+          "network": "=search_for_ip_address.body.data.attributes.network",
+          "regional_internet_registry": "=search_for_ip_address.body.data.attributes.regional_internet_registry"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "APIVoid",
+      "disabled": false,
+      "description": "Check IP Reputation\n\nLink to documentation:\nhttps://docs.apivoid.com/",
+      "guid": "b0b45a25e43073fce2f8aef250b4e354",
+      "options": {
+        "url": "https://api.apivoid.com/v2/ip-reputation",
+        "method": "post",
+        "content_type": "application_json",
+        "payload": {
+          "ip": "=condition.normalized_ip"
+        },
+        "headers": {
+          "X-API-Key": "<<INPUT.apivoid_credential>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": "347c33a4e7db9f65219aa1bbf1016403148a5e2836b101cae3598ffa50622aa7",
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Ip2location.io",
+      "disabled": false,
+      "description": null,
+      "guid": "57e0e24300c144dc372a14d761a011fc",
+      "options": {
+        "url": "https://api.ip2location.io/?key=<<CREDENTIAL.ip2whois_api_key>>&ip=<<condition.normalized_ip>>&format=json",
+        "content_type": "application_json",
+        "method": "get"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Event Transform",
+      "disabled": false,
+      "description": null,
+      "guid": "4e21b6199f4d4487b0adada6c7f1c77d",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": {
+          "ip": "=ip2location_io.body.ip",
+          "country_code": "=ip2location_io.body.country_code",
+          "country_name": "=ip2location_io.body.country_name",
+          "region": "=ip2location_io.body.region_name",
+          "city": "=ip2location_io.body.city_name",
+          "latitude": "=ip2location_io.body.latitude",
+          "longitude": "=ip2location_io.body.longitude",
+          "zip_code": "=ip2location_io.body.zip_code",
+          "time_zone": "=ip2location_io.body.time_zone",
+          "asn": "=ip2location_io.body.asn",
+          "as_name": "=ip2location_io.body.as",
+          "is_proxy": "=ip2location_io.body.is_proxy"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Event Transform",
+      "disabled": false,
+      "description": null,
+      "guid": "2b01e30c07dfb783d59ab6e1b59d3233",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": {
+          "ip": "=apivoid.body.ip",
+          "ip_version": "=apivoid.body.version",
+          "risk_score": "=apivoid.body.risk_score.result",
+          "blacklist_detections": "=apivoid.body.blacklists.detections",
+          "blacklist_engines_count": "=apivoid.body.blacklists.engines_count",
+          "blacklist_detection_rate": "=apivoid.body.blacklists.detection_rate",
+          "is_proxy": "=apivoid.body.anonymity.is_proxy",
+          "is_webproxy": "=apivoid.body.anonymity.is_webproxy",
+          "is_residential_proxy": "=apivoid.body.anonymity.is_residential_proxy",
+          "is_vpn": "=apivoid.body.anonymity.is_vpn",
+          "is_tor": "=apivoid.body.anonymity.is_tor",
+          "is_hosting": "=apivoid.body.anonymity.is_hosting",
+          "is_relay": "=apivoid.body.anonymity.is_relay",
+          "country_code": "=apivoid.body.information.country_code",
+          "country_name": "=apivoid.body.information.country_name",
+          "continent_code": "=apivoid.body.information.continent_code",
+          "city": "=apivoid.body.information.city_name",
+          "region": "=apivoid.body.information.region_name",
+          "latitude": "=apivoid.body.information.latitude",
+          "longitude": "=apivoid.body.information.longitude",
+          "isp": "=apivoid.body.information.isp",
+          "reverse_dns": "=apivoid.body.information.reverse_dns",
+          "asn": "=apivoid.body.asn.asn",
+          "asn_name": "=apivoid.body.asn.asname",
+          "asn_organization": "=apivoid.body.asn.org",
+          "network": "=apivoid.body.asn.route",
+          "asn_country_code": "=apivoid.body.asn.country_code",
+          "rir": "=apivoid.body.asn.rir",
+          "asn_status": "=apivoid.body.asn.status",
+          "asn_domain": "=apivoid.body.asn.domain",
+          "abuse_email": "=apivoid.body.asn.abuse_email"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::LLMAgent",
+      "name": "AI Agent",
+      "disabled": false,
+      "description": null,
+      "guid": "02eca09d45db802cf69c26dcc7756b6f",
+      "options": {
+        "mode": "",
+        "instructions": "You are a focused, expert assistant. You are performing a task independently for a user - they are unable to respond to you after providing their initial request.\n\nDo your best to resolve the user's request, making use of the tools available to you. Think and plan extensively about how to best serve the user before taking action.",
+        "prompt": "Summarize the following data:\n\n<<example_data.body>>",
+        "code_analyst_enabled": false,
+        "web_search_enabled": false
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EmailAgent",
+      "name": "Send Email",
+      "disabled": false,
+      "description": "Template placeholder. Configure the recipient, reply-to address, subject, and body before enabling this action.",
+      "guid": "c86278abf76675cc6c1af1a4d46253c9",
+      "options": {
+        "recipients": "REPLACE_WITH_ALERT_RECIPIENT",
+        "reply_to": "REPLACE_WITH_REPLY_TO_ADDRESS",
+        "sender_name": "Sarabjit Singh",
+        "subject": "IP enrichment alert",
+        "body": "Configure a recipient and message before enabling this action.",
+        "advanced_html": true
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Recorded Future Lookup IP",
+      "disabled": false,
+      "description": null,
+      "guid": "500f7691358c0b91970068108d591854",
+      "options": {
+        "url": "https://api.recordedfuture.com/v2/ip/<=condition.normalized_ip",
+        "method": "get",
+        "payload": {
+          "fields": "analystNotes,counts,entity,intelCard,metrics,risk,sightings,threatLists,timestamps",
+          "ip": "=condition.normalized_ip"
+        },
+        "headers": {
+          "X-RFToken": "<<CREDENTIAL.recordedfuture>>",
+          "User-Agent": "tines_automation/templates_1.0"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "IP Found",
+      "disabled": false,
+      "description": null,
+      "guid": "35c1508b240cb8d68718a4dc5e9f0ce7",
+      "options": {
+        "rules": [
+          {
+            "type": "in",
+            "value": "200",
+            "path": "=recorded_future_lookup_ip.status"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "IP Exit",
+      "disabled": false,
+      "description": null,
+      "guid": "fa938493ebb31953f7b9b0e951be5660",
+      "options": {
+        "mode": "message_only",
+        "payload": {
+          "criticality": "<<recorded_future_lookup_ip.body.data.risk.criticalityLabel>>",
+          "Summary": "<<recorded_future_lookup_ip.body.data.risk.riskSummary>>",
+          "Score": "<<recorded_future_lookup_ip.body.data.risk.score>>",
+          "Link": "<<recorded_future_lookup_ip.body.data.intelCard>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    }
+  ],
+  "diagram_notes": [
+    {
+      "content": "Already tested\n",
+      "position": [
+        1050,
+        840
+      ],
+      "guid": "41fda442b4a5473ceebc156be387b9c9",
+      "width": 290
+    },
+    {
+      "content": "Testing with multiple OSINT sources\\\nEnriches each public IP using VirusTotal, AbuseIPDB, APIVoid, and IP2Location.\n",
+      "position": [
+        240,
+        750
+      ],
+      "guid": "37d947708b5c7e407ff0caef51df0cfa",
+      "width": 290
+    },
+    {
+      "content": "curl -X POST \"https\\://<your-tines-tenant>.tines.com/webhook/ip-enrichment/222\" -H \"Content-Type: application/json\" -d \"{\"ips\":\\[\"8.8.8.8\"]}\"\n",
+      "position": [
+        990,
+        45
+      ],
+      "guid": "cb3e356bc085fdfe523a84079d1550f1",
+      "width": 371
+    },
+    {
+      "content": "Validates and normalizes incoming IPv4 addresses, then continues only with public IPs.\n",
+      "position": [
+        990,
+        210
+      ],
+      "guid": "5df00b6bbedb0cb95607758c9d336790",
+      "width": 290
+    },
+    {
+      "content": "**DISCLAIMER**\\\nThe story is not production ready. This was created to test OSINT sources and incorporate AI agent for end summary. This will help an SOC analyst to make informed decision based on quick summary\n",
+      "position": [
+        315,
+        -75
+      ],
+      "guid": "5eeaf49d5b6730fed353be26cd000c7b",
+      "width": 960
+    }
+  ],
+  "links": [
+    {
+      "source": 0,
+      "receiver": 1
+    },
+    {
+      "source": 1,
+      "receiver": 2
+    },
+    {
+      "source": 2,
+      "receiver": 4
+    },
+    {
+      "source": 4,
+      "receiver": 5
+    },
+    {
+      "source": 4,
+      "receiver": 6
+    },
+    {
+      "source": 4,
+      "receiver": 8
+    },
+    {
+      "source": 4,
+      "receiver": 9
+    },
+    {
+      "source": 5,
+      "receiver": 3
+    },
+    {
+      "source": 6,
+      "receiver": 7
+    },
+    {
+      "source": 8,
+      "receiver": 11
+    },
+    {
+      "source": 9,
+      "receiver": 10
+    },
+    {
+      "source": 14,
+      "receiver": 15
+    },
+    {
+      "source": 15,
+      "receiver": 16
+    }
+  ],
+  "diagram_layout": "{\"02eca09d45db802cf69c26dcc7756b6f\":[810,825],\"069430794e7d6ee55111cac9b8166056\":[315,525],\"2b01e30c07dfb783d59ab6e1b59d3233\":[975,690],\"35c1508b240cb8d68718a4dc5e9f0ce7\":[705,600],\"3b97c95e5b8977ead62332cbe82305fc\":[525,525],\"4e21b6199f4d4487b0adada6c7f1c77d\":[1230,690],\"500f7691358c0b91970068108d591854\":[705,525],\"57e0e24300c144dc372a14d761a011fc\":[1230,525],\"666d13eb07697afc5ed323fb50a0b886\":[750,360],\"6a4ad84f59bba532763caefd9d58fb4c\":[750,255],\"b0b45a25e43073fce2f8aef250b4e354\":[975,525],\"bcb1c5efdf4be0662db84d3d4cf2ff0e\":[750,180],\"c15d926ebf0f879be1398c8a9b899368\":[525,690],\"c86278abf76675cc6c1af1a4d46253c9\":[810,915],\"e829023e6ad381c624c80bc4279362ad\":[750,75],\"fa938493ebb31953f7b9b0e951be5660\":[705,690],\"fb7f5f4de4e6a2dab7455a9c2327791d\":[315,690]}",
+  "story_library_metadata": {},
+  "monitor_failures": false,
+  "synchronous_webhooks_enabled": false,
+  "integrations": [
+    {
+      "action_inputs": [
+        {
+          "name": "IP Address",
+          "description": "The IP address you are searching for.",
+          "required": true,
+          "type": "TEXT",
+          "ranking": 0,
+          "value": "\"<<condition.normalized_ip>>\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Virustotal Credential",
+          "description": "",
+          "required": true,
+          "type": "CREDENTIAL",
+          "ranking": 1,
+          "value": "\"=CREDENTIAL.virustotal\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        }
+      ],
+      "action_guid": "069430794e7d6ee55111cac9b8166056",
+      "product": "VirusTotal",
+      "action_options_keys": []
+    },
+    {
+      "action_inputs": [
+        {
+          "name": "AbuseIPDB credential",
+          "description": "",
+          "required": true,
+          "type": "CREDENTIAL",
+          "ranking": 0,
+          "value": "\"=CREDENTIAL.abuseipdb\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "IP address",
+          "description": "Single IP address (v4 or v6)",
+          "required": true,
+          "type": "TEXT",
+          "ranking": 1,
+          "value": "\"<%condition.normalized_ip%>\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Max age in days",
+          "description": "Only return reports within the last x amount of days. Defaults to 30, max 365",
+          "required": false,
+          "type": "NUMBER",
+          "ranking": 2,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Verbose",
+          "description": "Omitting the verbose flag will exclude reports and the country name field",
+          "required": false,
+          "type": "BOOLEAN",
+          "ranking": 3,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        }
+      ],
+      "action_guid": "3b97c95e5b8977ead62332cbe82305fc",
+      "product": "AbuseIPDB",
+      "action_options_keys": []
+    },
+    {
+      "action_inputs": [
+        {
+          "name": "APIVoid credential",
+          "description": "",
+          "required": true,
+          "type": "CREDENTIAL",
+          "ranking": 0,
+          "value": "\"=CREDENTIAL.apivoid\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "IP Address",
+          "description": "Public IPv4 or IPv6 address to scan (private or internal IPs are not allowed)",
+          "required": true,
+          "type": "TEXT",
+          "ranking": 1,
+          "value": "\"80.82.77.139\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        }
+      ],
+      "action_guid": "b0b45a25e43073fce2f8aef250b4e354",
+      "product": "APIVoid",
+      "action_options_keys": []
+    }
+  ],
+  "sections": [
+    {
+      "name": "Place Holder",
+      "color": "primary",
+      "position": [
+        735,
+        795
+      ],
+      "guid": "19e57263a6c695a9e9d6309a6a67f5ce",
+      "width": 300,
+      "height": 210,
+      "locked": false
+    },
+    {
+      "name": "IP enrichment",
+      "color": "primary",
+      "position": [
+        240,
+        525
+      ],
+      "guid": "f1851d3fe18968335db29bca54546a1d",
+      "width": 1245,
+      "height": 210,
+      "locked": false
+    },
+    {
+      "name": "Parsing and Conditions",
+      "color": "primary",
+      "position": [
+        690,
+        165
+      ],
+      "guid": "91ab0510e0c753f84f40d79bada16509",
+      "width": 285,
+      "height": 300,
+      "locked": false
+    }
+  ],
+  "parent_only_send_to_story": false,
+  "send_to_story_timeout_enabled": false,
+  "send_to_story_timeout_duration_seconds": null,
+  "keep_events_for": 86400,
+  "reporting_status": true,
+  "send_to_story_enabled": false,
+  "entry_agent_guid": null,
+  "exit_agent_guids": [],
+  "api_entry_action_guids": [],
+  "api_exit_action_guids": [],
+  "send_to_story_access": null,
+  "send_to_story_access_source": 0,
+  "send_to_story_skill_use_requires_confirmation": true,
+  "pages": [],
+  "tags": [],
+  "time_saved_unit": "minutes",
+  "time_saved_value": 0,
+  "recipients": [],
+  "integration_product": null,
+  "integration_vendor": null,
+  "llm_product_instructions": "",
+  "start_reference": null,
+  "app_endpoints": [],
+  "send_to_stories": [],
+  "icon": ":clapper:"
+}

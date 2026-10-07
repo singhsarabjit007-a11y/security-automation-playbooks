@@ -1,0 +1,645 @@
+{
+  "schema_version": 30,
+  "standard_lib_version": 97,
+  "action_runtime_version": 88,
+  "name": "Brand monitoring using OCR",
+  "description": null,
+  "guid": "d3e28c5b01a48906bbe994dcea3d9c95",
+  "slug": "brand_monitoring_using_ocr",
+  "agents": [
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Analyze Image with Google Cloud Vision",
+      "disabled": false,
+      "description": null,
+      "guid": "cc849944f362fc2a30eee5ee5374d07c",
+      "options": {
+        "url": "https://vision.googleapis.com/v1/images:annotate?key=<<CREDENTIAL.google_vision_api_key>>",
+        "content_type": "application_json",
+        "method": "post",
+        "payload": {
+          "requests": [
+            {
+              "image": {
+                "source": {
+                  "imageUri": "<<http_request.body.image>>"
+                }
+              },
+              "features": [
+                {
+                  "type": "DOCUMENT_TEXT_DETECTION"
+                },
+                {
+                  "type": "LOGO_DETECTION",
+                  "maxResults": 10
+                },
+                {
+                  "type": "WEB_DETECTION",
+                  "maxResults": 10
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::WebhookAgent",
+      "name": "Webhook",
+      "disabled": false,
+      "description": "Replace the placeholder webhook secret with a newly generated secret before publishing or using this story.",
+      "guid": "9f953a2afe6bed797c37ee179a2bcc98",
+      "options": {
+        "path": "brand-monitoring-ocr-template",
+        "secret": "00000000000000000000000000000000",
+        "verbs": "get,post"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "HTTP Request",
+      "disabled": false,
+      "description": null,
+      "guid": "51b47b522802411fd4bd1b4fe15ced84",
+      "options": {
+        "url": "https://restpack.io/api/screenshot/v7/capture",
+        "content_type": "application_json",
+        "method": "post",
+        "headers": {
+          "X-Access-Token": "<<CREDENTIAL.restpack_access_token>>"
+        },
+        "payload": {
+          "url": "<<webhook.body.url>>",
+          "json": true,
+          "mode": "fullpage",
+          "format": "png",
+          "width": 1280,
+          "height": 1024,
+          "wait": "network"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "OCR an Image using OCR.Space",
+      "disabled": false,
+      "description": null,
+      "guid": "32d8960b39da7920b4b1f21f5e957d7f",
+      "options": {
+        "url": "https://api.ocr.space/parse/imageurl",
+        "content_type": "json",
+        "method": "get",
+        "payload": {
+          "apikey": "<<CREDENTIAL.ocr_space>>",
+          "url": "<<explode_image_urls.individual_image_url>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Event Transform",
+      "disabled": false,
+      "description": null,
+      "guid": "9f980bd63dab81f3c29ca6e7908bb17e",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": {
+          "brandContext": {
+            "brandName": "ABC Ltd",
+            "officialDomains": [
+              "abc.com",
+              "www.abc.com"
+            ],
+            "brandAliases": [
+              "ABC",
+              "ABC Ltd",
+              "ABC Limited",
+              "ABC Investments"
+            ],
+            "expectedLogoNames": [
+              "ABC Ltd",
+              "ABC"
+            ],
+            "executiveNames": [
+              "[ABC Ltd Chief Executive Officer]",
+              "[ABC Ltd Chief Investment Officer]",
+              "[ABC Ltd Chief Financial Officer]",
+              "[ABC Ltd Head of Investments]",
+              "[ABC Ltd Head of Client Services]"
+            ],
+            "suspiciousDomainTerms": [
+              "abc-login",
+              "abc-verify",
+              "abc-support",
+              "abc-secure",
+              "abc-investment"
+            ],
+            "highRiskPhrases": [
+              "verify your account",
+              "confirm your identity",
+              "account suspended",
+              "password",
+              "one-time passcode",
+              "verification code",
+              "wire transfer",
+              "send money",
+              "cryptocurrency",
+              "crypto",
+              "gift card",
+              "guaranteed returns",
+              "risk-free investment",
+              "urgent action",
+              "remote access",
+              "WhatsApp",
+              "Telegram"
+            ]
+          },
+          "visionEvidence": {
+            "submittedUrl": "=webhook.body.url",
+            "ocrText": "=TRUNCATE(GET(FIRST(analyze_image_with_google_cloud_vision.body.responses), \"fullTextAnnotation.text\"), 4000, \"\")",
+            "detectedLogos": "=SLICE_ARRAY(GET(FIRST(analyze_image_with_google_cloud_vision.body.responses), \"logoAnnotations\"), 0, 5)",
+            "webEntities": "=SLICE_ARRAY(GET(FIRST(analyze_image_with_google_cloud_vision.body.responses), \"webDetection.webEntities\"), 0, 10)",
+            "bestGuessLabels": "=GET(FIRST(analyze_image_with_google_cloud_vision.body.responses), \"webDetection.bestGuessLabels\")"
+          },
+          "domainReputation": {
+            "checkedHost": "=PARSE_URL(webhook.body.url).host",
+            "reputationScore": "=GET(get_domain_reputation_virus_total.body, \"data.attributes.reputation\")",
+            "vendorStats": "=GET(get_domain_reputation_virus_total.body, \"data.attributes.last_analysis_stats\")",
+            "categories": "=GET(get_domain_reputation_virus_total.body, \"data.attributes.categories\")",
+            "creationDate": "=GET(get_domain_reputation_virus_total.body, \"data.attributes.creation_date\")",
+            "lastAnalysisDate": "=GET(get_domain_reputation_virus_total.body, \"data.attributes.last_analysis_date\")"
+          }
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::LLMAgent",
+      "name": "AI Agent",
+      "disabled": false,
+      "description": null,
+      "guid": "1f26d235c6f9863f183f99d5fbba23c0",
+      "options": {
+        "mode": "task",
+        "code_analyst_enabled": false,
+        "web_search_enabled": false,
+        "instructions": "You are a brand-protection analyst for ABC Ltd.\n\nOfficial domains: abc.com, www.abc.com.\nBrand names: ABC, ABC Ltd, ABC Limited, ABC Investments.\nExpected logo names: ABC Ltd, ABC.\n\nLeadership-name placeholders: [ABC Ltd Chief Executive Officer], [ABC Ltd Chief Investment Officer], [ABC Ltd Chief Financial Officer], [ABC Ltd Head of Investments], [ABC Ltd Head of Client Services].\n\nHigh-risk wording includes: verify your account, account suspended, password, one-time passcode, verification code, wire transfer, cryptocurrency, crypto, gift card, guaranteed returns, remote access, WhatsApp, Telegram.\n\nCompare the supplied compact Google Vision evidence against this context. A logo or name match alone does not prove abuse. Return valid JSON only.",
+        "prompt": "BRAND CONTEXT:\n<<event_transform.brandContext>>\n\nCOMPACT GOOGLE VISION EVIDENCE:\n<<event_transform.visionEvidence>>\n\nCompare the evidence with the brand context.\n\nReturn exactly this JSON:\n\n{\n  \"ocr_matches\": [],\n  \"ocr_match_percent\": 0,\n  \"ocr_why\": \"\",\n  \"logo_matches\": [],\n  \"logo_match_percent\": 0,\n  \"logo_why\": \"\",\n  \"domain_assessment\": \"official | non_official | lookalike | unknown\",\n  \"domain_risk_percent\": 0,\n  \"domain_why\": \"\",\n  \"high_risk_matches\": [],\n  \"verdict\": \"legitimate | false_positive | suspicious | likely_impersonation | inconclusive\",\n  \"why\": \"\"\n}"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Fetch Candidate Brand Mentions & Accounts",
+      "disabled": false,
+      "description": null,
+      "guid": "bff5a01a4be05205f57bab0a20b820c3",
+      "options": {
+        "url": "https://YOUR-MONITORING-PROVIDER.example.com/v1/search",
+        "content_type": "application_json",
+        "method": "post",
+        "headers": {
+          "Authorization": "Bearer <<CREDENTIAL.brand_monitoring_api_key>>",
+          "Content-Type": "application/json"
+        },
+        "payload": {
+          "brandName": "<<event_transform.brandContext.brandName>>",
+          "queries": [
+            {
+              "platform": "General Web",
+              "queryText": "ABC Ltd",
+              "queryType": "keyword"
+            },
+            {
+              "platform": "General Web",
+              "queryText": "ABC",
+              "queryType": "keyword"
+            },
+            {
+              "platform": "Instagram",
+              "queryText": "abc",
+              "queryType": "handle_or_keyword"
+            },
+            {
+              "platform": "Facebook",
+              "queryText": "ABC Ltd",
+              "queryType": "keyword"
+            },
+            {
+              "platform": "X",
+              "queryText": "ABC",
+              "queryType": "keyword"
+            }
+          ]
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Explode Candidate URLs",
+      "disabled": false,
+      "description": null,
+      "guid": "5a93eaf924fc008672a116b14726db38",
+      "options": {
+        "mode": "explode",
+        "path": "=fetch_candidate_brand_mentions_accounts.body.urls",
+        "to": "submittedUrl",
+        "limit": 50
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Event Transform",
+      "disabled": false,
+      "description": null,
+      "guid": "433c713f085b3c2c1f6034d995f620ca",
+      "options": {
+        "mode": "extract",
+        "matchers": [
+          {
+            "path": "=your_path",
+            "regexp": ".*",
+            "to": "results"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::LLMAgent",
+      "name": "AI Agent",
+      "disabled": false,
+      "description": null,
+      "guid": "0739bb37395eef9b7391f0dc9c749a23",
+      "options": {
+        "mode": "task",
+        "code_analyst_enabled": false,
+        "web_search_enabled": false,
+        "instructions": "You are a brand-protection analyst for ABC Ltd.\n\nOfficial domains: abc.com, www.abc.com.\nBrand names: ABC, ABC Ltd, ABC Limited, ABC Investments.\nExpected logo names: ABC Ltd, ABC.\n\nLeadership-name placeholders: [ABC Ltd Chief Executive Officer], [ABC Ltd Chief Investment Officer], [ABC Ltd Chief Financial Officer], [ABC Ltd Head of Investments], [ABC Ltd Head of Client Services].\n\nHigh-risk wording includes: verify your account, account suspended, password, one-time passcode, verification code, wire transfer, cryptocurrency, crypto, gift card, guaranteed returns, remote access, WhatsApp, Telegram.\n\nCompare the supplied compact Google Vision evidence against this context. A logo or name match alone does not prove abuse. Return valid JSON only.",
+        "prompt": "BRAND CONTEXT:\n<<event_transform.brandContext>>\n\nCOMPACT GOOGLE VISION EVIDENCE:\n<<event_transform.visionEvidence>>\n\nCompare the evidence with the brand context.\n\nReturn exactly this JSON:\n\n{\n  \"ocr_matches\": [],\n  \"ocr_match_percent\": 0,\n  \"ocr_why\": \"\",\n  \"logo_matches\": [],\n  \"logo_match_percent\": 0,\n  \"logo_why\": \"\",\n  \"domain_assessment\": \"official | non_official | lookalike | unknown\",\n  \"domain_risk_percent\": 0,\n  \"domain_why\": \"\",\n  \"high_risk_matches\": [],\n  \"verdict\": \"legitimate | false_positive | suspicious | likely_impersonation | inconclusive\",\n  \"why\": \"\"\n}"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Skip Official Domains",
+      "disabled": false,
+      "description": null,
+      "guid": "a6e9fab110ff164090416da1be313186",
+      "options": {
+        "rules": [
+          {
+            "type": "!regex",
+            "path": "<<webhook.body.url>>",
+            "value": "(?i)^https?://([a-z0-9-]+\\.)*abc\\.com(?::\\d+)?(?:/|$)"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Get Domain Reputation - VirusTotal",
+      "disabled": false,
+      "description": "Don't see the exact task you'd like to use for Virustotal? Build it yourself with this template. We've already included the base URL and auth headers as a start.\n\nLink to API documentation: \nhttps://virustotal.readme.io/reference/overview",
+      "guid": "c18ca29ef4426a6f31681ed0a2088639",
+      "options": {
+        "url": "= \"https://www.virustotal.com/api/v3/domains/\" & PARSE_URL(webhook.body.url).host",
+        "method": "get",
+        "content_type": "application_json",
+        "headers": {
+          "accept": "application/json",
+          "x-apikey": "<<CREDENTIAL.virustotal>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": "cd594134184da1ba0fe61a1d94028c4f02ee447b876673b6f65140709127ce47",
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    }
+  ],
+  "diagram_notes": [
+    {
+      "content": "## Disclaimer\n\nThis story is an investigation and triage workflow. It does not prove that a website, account, image, or domain is fraudulent, malicious, or affiliated with ABC Ltd.\nThe workflow uses a mixture of URL allowlisting, VirusTotal domain intelligence, webpage screenshots, OCR, logo detection, and AI-generated analysis. These sources can be incomplete, inaccurate, delayed, manipulated, or unavailable. A clean VirusTotal result, a matching logo, or a matching brand name must not be treated as conclusive evidence on its own.\nAI outputs are advisory. An analyst must review the submitted URL, screenshot, OCR text, detected logos, domain-reputation data, and the AI reasoning before taking any enforcement, takedown, account-disable, customer-contact, or legal action.\nABC Ltd, `abc.com`, the leadership entries, brand aliases, and logo terms are placeholders. Replace them with verified company information before operational use. Maintain the approved-domain list, leadership list, known scam phrases, and suspicious-domain terms as brand intelligence changes.\nOnly submit URLs that your organization is authorized to investigate. Submitted URLs, screenshots, OCR text, and reputation requests are sent to configured third-party services, including Restpack, Google Cloud Vision, VirusTotal, and the selected AI provider. Use credentials, data retention, and sharing settings that comply with your organization’s security, privacy, and legal requirements.\nThe workflow skips approved ABC domains to reduce unnecessary analysis. A skipped domain is not evidence that the website is secure; it only means the hostname matched the configured allowlist.\n",
+      "position": [
+        -180,
+        -600
+      ],
+      "guid": "ecd2bc090440313e922a9b7f91500fe8",
+      "width": 960
+    },
+    {
+      "content": "Fetch Candidate Brand Mentions & Accounts\n|\nv\nExplode Candidate URLs\n|\nv\nSkip Official Domains\n|\nv\nGet Domain Reputation - VirusTotal\n|\nv\nRestpack: Capture Screenshot\n|\n+-------+-------+\n\\|               |\nv               v\nGoogle Cloud Vision   OCR.Space\n\\|               |\nv               v\nPackage Brand Context  Extract Pinterest Image URLs\nand Vision Evidence            |\n\\|                      v\nv                Legacy AI OCR Review\nAI Brand-Impersonation Review\n",
+      "position": [
+        -255,
+        -210
+      ],
+      "guid": "b5085eb37f5c81ca2b515aaa7ca2ef9d",
+      "width": 290
+    },
+    {
+      "content": "Webhook receives submitted URL\n",
+      "position": [
+        570,
+        -150
+      ],
+      "guid": "d060b56238a13fd1d3174d78f38435dd",
+      "width": 290
+    },
+    {
+      "content": "Skip Official Domains\n\nGet Domain Reputation - VirusTotal\n",
+      "position": [
+        570,
+        -60
+      ],
+      "guid": "c5b17588452f01ade22f66cf8530aee4",
+      "width": 290
+    },
+    {
+      "content": "Restpack: Capture Screenshot\n",
+      "position": [
+        570,
+        75
+      ],
+      "guid": "3c0bec024056c5206054a8fa900e4b3d",
+      "width": 290
+    },
+    {
+      "content": "Package Brand Context, Vision,\nand Domain-Reputation Evidence\n",
+      "position": [
+        615,
+        270
+      ],
+      "guid": "6d80fb721601d60c2eb3c9139f375a1f",
+      "width": 290
+    },
+    {
+      "content": "AI Brand-Impersonation Review\n",
+      "position": [
+        615,
+        360
+      ],
+      "guid": "a2c4e314dd885ab2b7cce3a6a4ec4b55",
+      "width": 290
+    }
+  ],
+  "links": [
+    {
+      "source": 0,
+      "receiver": 4
+    },
+    {
+      "source": 1,
+      "receiver": 10
+    },
+    {
+      "source": 2,
+      "receiver": 0
+    },
+    {
+      "source": 2,
+      "receiver": 3
+    },
+    {
+      "source": 3,
+      "receiver": 8
+    },
+    {
+      "source": 4,
+      "receiver": 5
+    },
+    {
+      "source": 6,
+      "receiver": 7
+    },
+    {
+      "source": 7,
+      "receiver": 10
+    },
+    {
+      "source": 8,
+      "receiver": 9
+    },
+    {
+      "source": 10,
+      "receiver": 11
+    },
+    {
+      "source": 11,
+      "receiver": 2
+    }
+  ],
+  "diagram_layout": "{\"0739bb37395eef9b7391f0dc9c749a23\":[75,360],\"1f26d235c6f9863f183f99d5fbba23c0\":[450,360],\"32d8960b39da7920b4b1f21f5e957d7f\":[75,195],\"433c713f085b3c2c1f6034d995f620ca\":[75,285],\"51b47b522802411fd4bd1b4fe15ced84\":[285,105],\"5a93eaf924fc008672a116b14726db38\":[105,-135],\"9f953a2afe6bed797c37ee179a2bcc98\":[405,-135],\"9f980bd63dab81f3c29ca6e7908bb17e\":[450,285],\"a6e9fab110ff164090416da1be313186\":[285,-60],\"bff5a01a4be05205f57bab0a20b820c3\":[105,-225],\"c18ca29ef4426a6f31681ed0a2088639\":[285,0],\"cc849944f362fc2a30eee5ee5374d07c\":[450,195]}",
+  "story_library_metadata": {},
+  "monitor_failures": false,
+  "synchronous_webhooks_enabled": false,
+  "integrations": [],
+  "sections": [],
+  "parent_only_send_to_story": false,
+  "send_to_story_timeout_enabled": false,
+  "send_to_story_timeout_duration_seconds": null,
+  "keep_events_for": 86400,
+  "reporting_status": true,
+  "send_to_story_enabled": false,
+  "entry_agent_guid": null,
+  "exit_agent_guids": [],
+  "api_entry_action_guids": [],
+  "api_exit_action_guids": [],
+  "send_to_story_access": null,
+  "send_to_story_access_source": 0,
+  "send_to_story_skill_use_requires_confirmation": true,
+  "pages": [],
+  "tags": [],
+  "time_saved_unit": "minutes",
+  "time_saved_value": 0,
+  "recipients": [],
+  "integration_product": null,
+  "integration_vendor": null,
+  "llm_product_instructions": "",
+  "start_reference": null,
+  "app_endpoints": [],
+  "send_to_stories": [],
+  "icon": ":satellite_antenna:"
+}

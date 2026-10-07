@@ -1,0 +1,975 @@
+{
+  "schema_version": 30,
+  "standard_lib_version": 97,
+  "action_runtime_version": 88,
+  "name": "Anyrun file analysis with AI summary",
+  "description": "Analyze suspicious files with Any.Run and receive an email with a summary of results, including a link to the full report once complete.\n\ntags: AnyRun, Intermediate, Investigate, \nicons: 🔬,🗃, 📧\nvisibility: public",
+  "guid": "f474284dd3f66a8dfdcb09e85148185c",
+  "slug": "anyrun_file_analysis_with_ai_summary",
+  "agents": [
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Trigger Successful Submission",
+      "disabled": false,
+      "description": null,
+      "guid": "7d02d5a823665fb3a059712ef3030a7b",
+      "options": {
+        "rules": [
+          {
+            "type": "field==value",
+            "value": "201",
+            "path": "<<submit_file_to_any_run_for_analysis.status>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::WebhookAgent",
+      "name": "Form",
+      "disabled": false,
+      "description": "Replace the placeholder webhook secret with a newly generated secret before publishing or using this story.",
+      "guid": "063e6f007f0853f8ecd8c96b426948e4",
+      "options": {
+        "path": "any-run-file-analysis-template",
+        "secret": "00000000000000000000000000000000"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::EmailAgent",
+      "name": "Email Analysis Results",
+      "disabled": false,
+      "description": null,
+      "guid": "10215f8106aa2043c420f16f7cfe0105",
+      "options": {
+        "recipients": [
+          "<<file_submission_form.body.email>>"
+        ],
+        "subject": "Any.run File Analysis Results - <<DATE(\"now\", \"%Y-%m-%d\")>>",
+        "body": "<body style=\"margin: 0;background-color: #FCF9F5;\">\n  \n  <center class=\"wrapper\" style=\"width: 100%;table-layout: fixed;background-color: #FCF9F5;padding-bottom: 40px;\">\n    <table class=\"main\" align=\"center\" style=\"border-spacing: 0px;margin: 0 auto;width: 100%;max-width: 600px;background-color: #FFFFFF;font-family: sans-serif;color: #4a4a4a;\">\n      <!-- HEADER -->\n      <tr>\n        <td style=\"padding: 0;\">\n          <table width=\"100%\" style=\"border-spacing: 0;\">\n            <tr>\n              <td style=\"text-align: center; padding: 8px 0 4px; border-top: 2px; border-bottom: 3px solid;\">\n                <a href=\"#\"><img src=\"https://ci6.googleusercontent.com/proxy/nPFmlOl5u2tp9Og0HFrQEkCT2L2vaxxB--579Tp8GS4bvNHJR35InJt8XNXpMdI_FuElqu-m85JZAWn7nKQxNkbolPLRzHDUmruQVIGr-t-pYv92=s0-d-e1-ft#https://www.tines.com/logos/logo-tines-with-backdrop-light@2x.png\" width=\"100\" alt=\"\" style=\"border: 0;\"></a>\n              </td>\n            </tr>\n          </table>\n        </td>\n      </tr>\n      <!-- COLUMN SECTION -->\n      <tr>\n        <td style=\"padding: 0;\">\n          <table width=\"100%\" style=\"border-spacing: 0;\">\n            <tr>\n              <td class=\"two-columns\" style=\"padding: 35px 0 40px;font-size: 0;text-align: center;\">\n                <!-- Col 1-->\n                <table class=\"column\" style=\"border-spacing: 0;width: 100%;max-width: 300px;display: inline-block;vertical-align: top;\">\n                  <tr>\n                    <td class=\"padding\" style=\"padding: 20px;\">\n                      <table class=\"content\" style=\"border-spacing: 0;font-size: 15px;text-align: center;line-height: 20px;\">\n                        <tr>\n                          <td style=\"padding: 0;\">\n                            <a href=\"#\">\n                              <img src=\"https://www.datocms-assets.com/55802/1635420776-illustration-security-gate.png?dpr=1&fm=png&w=824\" alt=\"\" width=\"260\" style=\"max-width: 260px;border-radius: 8px;border: 0;\">\n                            </a>\n                          </td>\n                        </tr>\n                        <tr>\n                          <td style=\"padding:10px;\">\n                            <p style=\"font-size: 17px;font-weight: bold;\">ANY.RUN - Interactive Sandbox</p>\n                            <p style=\"padding-bottom: 15px; font-family: 'Courier New', Courier, monospace; text-align: center;\">\n                              <strong>Filename: </strong><<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.content.mainObject.filename>><br>\n                              <strong>Type: </strong><<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.content.mainObject.type>><br>\n                              <strong>Threat: </strong><<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.scores.verdict.threatLevelText>><br>\n                              <strong>Threat Level: </strong><<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.scores.verdict.threatLevel>><br>\n                            </p>\n                            <a href=\"<<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.analysis.permanentUrl>>\" class=\"button\" style=\"background-color: #2C9469;color: #ffffff;text-decoration: none;padding: 12px 20px;border-radius: 8px;font-weight: bold;letter-spacing: .5px;\">Full Results</a>\n                          </td>\n                        </tr>\n                      </table>\n                    </td>\n                  </tr>\n                </table>\n              </td>\n            </tr>\n          </table>\n        </td>\n      </tr>\n      <!-- EMAIL LOGOS -->\n      <tr>\n        <td style=\"padding: 0;\">\n          <table style=\"border-spacing: 0;\">\n\n          </table>\n        </td>\n      </tr>\n      <!-- FOOTER SECTION -->\n      <tr>\n        <td style=\"padding: 0;\">\n          <table width=\"100%\" style=\"border-spacing: 0;\">\n            <tr>\n              <td style=\"text-align: center; padding: 8px 0 4px; border-top: 2px; border-bottom: 3px solid;\">\n                <a href=\"#\"><img src=\"https://ci4.googleusercontent.com/proxy/Nu-KkbA1FI6A_6Vr064Q-PftJ6lv4BBas9_GToS_lZUOFGS4Ye2-bw-rJlnEG_UGF3iP0brWs9H5W2mWt9DBOjHI9sGxIMtp1wXfXGg=s0-d-e1-ft#https://www.tines.com/logos/tines-icon-light-circle@2x.png\" width=\"50\" alt=\"\" style=\"border: 0;\"></a>\n              </td>\n            </tr>\n          </table>\n          </td>\n      </tr>\n      <tr>\n        <td style=\"padding: 0;\">\n          <table width=\"100%\" style=\"border-spacing: 0;\">\n          <tr>\n            <td style=\"text-align: center; padding: 8px 0 4px; border-top: 2px; border-bottom: 3px;\">\n              <a href=\"https://hub.tines.com/\" style=\"text-decoration:none\">Help Center</a> · \n              <a href=\"https://tines.com/blog\" style=\"text-decoration:none\">Blog</a> · \n              <a href=\"https://www.linkedin.com/company/tines-io/\" style=\"text-decoration:none\">LinkedIn</a> · \n              <a href=\"https://twitter.com/tines_io\" style=\"text-decoration:none\">Twitter</a> · \n              <a href=\"https://hq.tines.io/forms/6f8b122ccba3cb7e8e0d3531d1b70eb2\" style=\"text-decoration:none\">Slack Community</a> · \n              <a href=\"https://tines.com/careers\" style=\"text-decoration:none\">Careers</a> · \n              <a href=\"https://tines.com/terms\" style=\"text-decoration:none\">Terms</a> · \n              <a href=\"https://tines.com/privacy\" style=\"text-decoration:none\">Privacy</a>\n            </td>\n          </tr>\n        </table></td>\n      </tr>\n    </table>\n  </center>\n</body>"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Delay",
+      "disabled": false,
+      "description": null,
+      "guid": "e803bb0b505df0150525e8ef01fc27be",
+      "options": {
+        "mode": "delay",
+        "seconds": "180"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Analysis Complete",
+      "disabled": false,
+      "description": null,
+      "guid": "b5cd89ad33964f5e3c12457e1b0a9714",
+      "options": {
+        "rules": [
+          {
+            "type": "field==value",
+            "value": "200",
+            "path": "<<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.status>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Analysis Not Complete",
+      "disabled": false,
+      "description": null,
+      "guid": "23419f9f634fd8ce316b8a74ab89466c",
+      "options": {
+        "rules": [
+          {
+            "type": "field!=value",
+            "value": "200",
+            "path": "<<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.status>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Increment Counter",
+      "disabled": false,
+      "description": null,
+      "guid": "99b2d60ac1dedcb7a181f6eca197b2c0",
+      "options": {
+        "mode": "message_only",
+        "payload": {
+          "counter": "<<PLUS(increment_counter.counter, 1)>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Counter Less Than 10",
+      "disabled": false,
+      "description": null,
+      "guid": "19d8a64d6c782684efd7ab2bc7a6877e",
+      "options": {
+        "rules": [
+          {
+            "type": "field<=value",
+            "value": "10",
+            "path": "<<increment_counter.counter>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Delay Event",
+      "disabled": false,
+      "description": null,
+      "guid": "d22d57f3907c77e6171fef7d20a0e5b7",
+      "options": {
+        "mode": "delay",
+        "seconds": "60"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Counter Greater than 10",
+      "disabled": false,
+      "description": null,
+      "guid": "7d70c9f5e87e6261439a728f56c02f28",
+      "options": {
+        "rules": [
+          {
+            "type": "field>value",
+            "value": "10",
+            "path": "<<increment_counter.counter>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::EmailAgent",
+      "name": "Send Error Email",
+      "disabled": false,
+      "description": null,
+      "guid": "a5df66d4b91718df34d9dab473f9c2da",
+      "options": {
+        "recipients": [
+          "<<file_submission_form.body.email>>"
+        ],
+        "subject": "ERROR Any.run File Analysis Results - <<DATE(\"now\", \"%Y-%m-%d\")>>",
+        "body": "Timeout"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Trigger unsuccessful Submission",
+      "disabled": false,
+      "description": null,
+      "guid": "e53eb11fb25b90cdb0ba9b051e3a5f50",
+      "options": {
+        "rules": [
+          {
+            "type": "field!=value",
+            "value": "201",
+            "path": "<<submit_file_to_any_run_for_analysis.status>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::EmailAgent",
+      "name": "Email Error",
+      "disabled": false,
+      "description": null,
+      "guid": "7d3366b942d405e6ded8fc5e69f1f857",
+      "options": {
+        "recipients": [
+          "<<file_submission_form.body.email>>"
+        ],
+        "subject": "ANY.RUN File Analysis Error - <<DATE(\"now\", \"%Y-%m-%d\")>>",
+        "body": "ANY.RUN could not submit the sample<br><br><strong>Response code:</strong> <<submit_file_to_any_run_for_analysis.status>><br><strong>Message:</strong> <<submit_file_to_any_run_for_analysis.message>><br><br>Please check story: <a href=\"<<APPEND(META.tenant.domain, \"/stories/\") |> APPEND(%, META.story.id)>>\"><<META.story.name>></a>"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::FormAgent",
+      "name": "File submission form",
+      "disabled": false,
+      "description": "Submit a file for analysis on Any.run",
+      "guid": "701c70f05f6d753822b6624aac04f408",
+      "options": {
+        "fields": "",
+        "mode": "success_page",
+        "submissionMessage": "Thank you for your submission",
+        "url_identifier": "sample",
+        "visibility": "world",
+        "pages_background_color": "#ffffff",
+        "page_logo": {
+          "name": "nites.jpeg",
+          "type": "image/jpeg",
+          "contents": "iVBORw0KGgoAAAANSUhEUgAAAFQAAAAYCAYAAABk8drWAAAACXBIWXMAAAsTAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAARCSURBVHgB7VhLctpAEB1k7LVyA/kEgRMEn8BQ5e8qcALjE1icAPsEkJW/VeATwA1QTmDlBCE7l3/kPblbTIiMJcVOeaFXBRrN9Mz0vOnu6ZExBQoUKFCgwAdByX4ZDAbuw8PDwWw2a+LVk+rAcZxgZWWl02g0QpMSl5eXXRlnvLq62kLfqcmIi4uLZqlU+lwulztJ/aGvJ/p+39nZ6cu8R3j30c/f3t7umP8MRwtXV1df7+/vb6iMmZNJVJ6enppom5ydnbVNCpAIjENZF786Fn1kMgLE1PDocRz0HyTJQKe2zNOjMbBO3o1sZgS2Ybw29KqYd0ZEKMg8AGl980zAS3BhqV0Sv0Qmsho8/iCQi5T6XED/WtJmoj7W9/b2Vgk9gXUGWM+JtoF4H/VdFEdK/HvB4UIxuZ+2A2SPlykFayLhXkJ9z/wDsJlHaTZld3fXR4ho7O3tHWudRbyrxC+Ca+L4rxFuyXlJ7c7j4yOtKcuuuXd3d+0XJvMkZPwFWpm4cV64sLTBawuGB/UYus7Pz7vUB3NOYLGxV+EsuIHrT2ydITNCn5/sxyfaKdO0x02Qo8wNY7Yt52ChmeOKraAN2ZxlyBxLZb6xFCuvxWN4UE361PGYYn1egli0KSQJxIy42VIfso959rCehplFOYYUkY0MCJvn68C5CDUJLi2ho7msExVa3Pk0QL9veJxIuZ3W0pkZIMNYR3GodSBjA3VVlsUAPK1HprCOuqoQpmHGRV3FzNfcQvZQpSx06YjcFx3fMW8E7mBK0W6egwEk+ObZKkjqIO0hR1Ih/0vfYeGhpmAwgLpUX4OkMQv7+/shCNV0i+GtBrlYX5Kn2QLjNTeCMVvby6KkZ7IhsF/E6jyTDhqDfZMBJAHzUHHGP1cOuR8mJ05PTz0zPzs2MfZM20BgLAfCXGzmEAYTWbN4YRPy3JQxNusauo1V3hF3yopg4T1TbISSB3nSKLhZgL6HLDN8oLxp3ga8vPSTfnD3MTcTzw1ypeHASI6NX88+5Jy1tTWmF1luMRw8voHIKeeZbHBTHGCJgGseW4dU7pySrm3m6w62trZa9o/kQcdrkTNwaw9c8fZVhcV+oqtb5FY0DDgSTw7TKgKT7+gkhH0jyQK6Tt4kG+7eMtmMIAasLj6ELULqtsfw8oJ1jdA+YGjgLYvvPCcoR84Yc63+UWiIxucf78HiSsuUZFvLTpgF73rzSAI3FMS0MnQJtUCSmD/KdwvdGFfyygnb5NZIBGI8ShzTpwnzUcpaWU2oh1p8ytOVmDIsxIlImOkB0w/9AGFDFhaabJhCmcNlH0zgYoGxXHKxHW451LSF86vXQPdQ6sYqy7BmhYlofs7NPpImaZumR5y3jzVvsFLI0nW6ko9WRG6oaVg0v/nA0JCwjHhx1aktw3jGA+yF8dykr2ZisRVsZLg4XpIcSGWOG+b5ilagQIECBZLxG5sJ41WbSDouAAAAAElFTkSuQmCC\n",
+          "display_logo": true
+        },
+        "pages_appearance_mode": "dark",
+        "pages_action_color": "#777FFF"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Submit File to ANY.RUN for Analysis",
+      "disabled": false,
+      "description": "Upload a Sample or File to ANY.RUN Sandbox for analysis",
+      "guid": "ecada9164c2aae48aa029ae4dd19c329",
+      "options": {
+        "url": "https://api.any.run/v1/analysis/",
+        "content_type": "data",
+        "method": "post",
+        "payload": {
+          "obj_type": "file",
+          "file": {
+            "filename": "<<BASE64_DECODE(file_submission_form.body.artifact_sample.contents)>>",
+            "contents": "<<file_submission_form.body.artifact_sample.contents>>"
+          }
+        },
+        "headers": {
+          "Authorization": "API-Key <<CREDENTIAL.any_run>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": "8201c2d023f7b159834e579c725219a901e2821386842fcc483b6ff9766dde92",
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Retrieve detailed report of a recent ANY.RUN analysis by TaskId",
+      "disabled": false,
+      "description": "Retrieve the detailed json report of recent any.run sandbox scan by its TaskId. The TaskId is the ID returned when a file or URL is sent to ANY.RUN for analysis.",
+      "guid": "67ec0a7e49da5fa5ef610fdd78e0f142",
+      "options": {
+        "url": "https://api.any.run/report/<<submit_file_to_any_run_for_analysis.body.data.taskid>>/summary/json",
+        "method": "get",
+        "headers": {
+          "Authorization": "API-Key <<CREDENTIAL.any_run>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": "8b7f09135d09c96a1d4ea1b67f7dcec2a3cd8ea535537bc7f44ca190443583c2",
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::TriggerAgent",
+      "name": "Analysis Not Complete",
+      "disabled": false,
+      "description": null,
+      "guid": "f91770da56c63ac1f52ea6b141516c33",
+      "options": {
+        "rules": [
+          {
+            "type": "field==value",
+            "value": "Task is still running",
+            "path": "<<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.message>>"
+          }
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Event Transform",
+      "disabled": false,
+      "description": null,
+      "guid": "c3c96711b4ac2ec64e53ef31dd002c06",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": {
+          "mode": "message_only",
+          "payload": {
+            "response_code": "<<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.status>>",
+            "message": "<<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.message>>"
+          }
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EmailAgent",
+      "name": "Email Error",
+      "disabled": false,
+      "description": null,
+      "guid": "d46fb72461696ada7b641bc16ff4e8c3",
+      "options": {
+        "recipients": [
+          "<<file_submission_form.body.email>>"
+        ],
+        "subject": "ANY.RUN File Analysis Error - <<DATE(\"now\", \"%Y-%m-%d\")>>",
+        "body": "{\r\n  \"recipients\": [\r\n    \"<<file_submission_form.body.email>>\"\r\n  ],\r\n  \"subject\": \"ANY.RUN File Analysis Error - <<DATE(\\\"now\\\", \\\"%Y-%m-%d\\\")>>\",\r\n  \"body\": \"ANY.RUN could not retrieve the analysis report.<br><br><strong>Response code:</strong> <<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.status>><br><strong>Message:</strong> <<retrieve_detailed_report_of_a_recent_any_run_analysis_by_taskid.body.message>><br><br>Please check story: <a href=\\\"<<APPEND(META.tenant.domain, \\\"/stories/\\\") |> APPEND(%, META.story.id)>>\\\"><<META.story.name>></a>\"\r\n}>>"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": false,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    }
+  ],
+  "diagram_notes": [
+    {
+      "content": "# Any.Run file analysis\n\n***\n\nThis story will take input from a form with an email and a file to analyse.\n\nIt will upload the file to a sandbox VM in Any.run and run an analysis.\n\nThe story will incrementally check if the analysis has completed, once completed the full analysis will be emailed to the recipient set in the form\n",
+      "position": [
+        750,
+        -15
+      ],
+      "guid": "d47cf6176bc422fba888407dbefb0bec",
+      "width": 290
+    },
+    {
+      "content": "Continues only when ANY.RUN accepts the file and returns HTTP `201 Created` \n",
+      "position": [
+        0,
+        315
+      ],
+      "guid": "2d30ff3badf811d99d0313e825846120",
+      "width": 290
+    },
+    {
+      "content": "Continues only when ANY.RUN report is retrieved and returns HTTP `201 Created` \n",
+      "position": [
+        765,
+        570
+      ],
+      "guid": "e3d89fd0264a12baf500bab0963771a6",
+      "width": 290
+    },
+    {
+      "content": "Task is still running  \n",
+      "position": [
+        -15,
+        735
+      ],
+      "guid": "b8558093cb977d348dfb71ae4207c524",
+      "width": 290
+    },
+    {
+      "content": "Formats the failed or incomplete ANY.RUN report response into a simple status code and message for the error email.\n",
+      "position": [
+        780,
+        720
+      ],
+      "guid": "120fac24ef93ccead4f19f7ab9a7f460",
+      "width": 290
+    },
+    {
+      "content": "Time out\n",
+      "position": [
+        -30,
+        975
+      ],
+      "guid": "66365810727091fff997395477b9a426",
+      "width": 290
+    },
+    {
+      "content": "This playbook accepts suspicious file submissions, sends them to ANY.RUN for sandbox analysis, periodically checks for the analysis result, and emails either the findings or an error outcome.\n\nObjective: automate basic malware-analysis triage by submitting files to ANY.RUN and notifying the user when analysis completes or fails.\n",
+      "position": [
+        60,
+        -135
+      ],
+      "guid": "8000506bc65f09c71d41aadc471b3e5c",
+      "width": 960
+    },
+    {
+      "content": "**Disclaimer**: This is a proof-of-concept playbook and is not production-ready. Before production use, add secure file handling, access controls, input validation, credential management, retry/error handling, monitoring, alerting, rate-limit controls, and organization-approved data-sharing and retention policies.\n",
+      "position": [
+        60,
+        -225
+      ],
+      "guid": "9cabd4b57d02405ec480043632142873",
+      "width": 944
+    }
+  ],
+  "links": [
+    {
+      "source": 0,
+      "receiver": 3
+    },
+    {
+      "source": 1,
+      "receiver": 14
+    },
+    {
+      "source": 3,
+      "receiver": 15
+    },
+    {
+      "source": 4,
+      "receiver": 2
+    },
+    {
+      "source": 5,
+      "receiver": 16
+    },
+    {
+      "source": 6,
+      "receiver": 7
+    },
+    {
+      "source": 6,
+      "receiver": 9
+    },
+    {
+      "source": 7,
+      "receiver": 8
+    },
+    {
+      "source": 8,
+      "receiver": 15
+    },
+    {
+      "source": 9,
+      "receiver": 10
+    },
+    {
+      "source": 11,
+      "receiver": 12
+    },
+    {
+      "source": 13,
+      "receiver": 14
+    },
+    {
+      "source": 14,
+      "receiver": 0
+    },
+    {
+      "source": 14,
+      "receiver": 11
+    },
+    {
+      "source": 15,
+      "receiver": 4
+    },
+    {
+      "source": 15,
+      "receiver": 5
+    },
+    {
+      "source": 16,
+      "receiver": 6
+    },
+    {
+      "source": 16,
+      "receiver": 17,
+      "link_type": "secondary"
+    },
+    {
+      "source": 17,
+      "receiver": 18
+    }
+  ],
+  "diagram_layout": "{\"063e6f007f0853f8ecd8c96b426948e4\":[300,165],\"10215f8106aa2043c420f16f7cfe0105\":[585,645],\"19d8a64d6c782684efd7ab2bc7a6877e\":[300,825],\"23419f9f634fd8ce316b8a74ab89466c\":[300,600],\"67ec0a7e49da5fa5ef610fdd78e0f142\":[300,480],\"701c70f05f6d753822b6624aac04f408\":[465,-15],\"7d02d5a823665fb3a059712ef3030a7b\":[300,345],\"7d3366b942d405e6ded8fc5e69f1f857\":[555,420],\"7d70c9f5e87e6261439a728f56c02f28\":[60,825],\"99b2d60ac1dedcb7a181f6eca197b2c0\":[300,750],\"a5df66d4b91718df34d9dab473f9c2da\":[60,915],\"b5cd89ad33964f5e3c12457e1b0a9714\":[585,585],\"c3c96711b4ac2ec64e53ef31dd002c06\":[585,735],\"d22d57f3907c77e6171fef7d20a0e5b7\":[300,915],\"d46fb72461696ada7b641bc16ff4e8c3\":[585,825],\"e53eb11fb25b90cdb0ba9b051e3a5f50\":[555,330],\"e803bb0b505df0150525e8ef01fc27be\":[300,420],\"ecada9164c2aae48aa029ae4dd19c329\":[300,255],\"f91770da56c63ac1f52ea6b141516c33\":[300,675]}",
+  "story_library_metadata": {},
+  "monitor_failures": false,
+  "synchronous_webhooks_enabled": false,
+  "integrations": [],
+  "sections": [],
+  "parent_only_send_to_story": false,
+  "send_to_story_timeout_enabled": false,
+  "send_to_story_timeout_duration_seconds": null,
+  "keep_events_for": 86400,
+  "reporting_status": true,
+  "send_to_story_enabled": false,
+  "entry_agent_guid": null,
+  "exit_agent_guids": [],
+  "api_entry_action_guids": [],
+  "api_exit_action_guids": [],
+  "send_to_story_access": null,
+  "send_to_story_access_source": 0,
+  "send_to_story_skill_use_requires_confirmation": true,
+  "pages": [
+    {
+      "containers": [
+        {
+          "guid": "fdc7af78d89a7b236b318836dae4acbe",
+          "ranking": 0,
+          "category": 0,
+          "name": "Container",
+          "layout": "vertical",
+          "alignment": "no_alignment",
+          "loop": "",
+          "spacing": "no_spacing",
+          "user_driven_loop": false
+        },
+        {
+          "guid": "16f4bc6ff9e327a7f000b397acd249d7",
+          "ranking": 1,
+          "category": 0,
+          "name": "Container",
+          "layout": "vertical",
+          "alignment": "no_alignment",
+          "loop": "",
+          "spacing": "no_spacing",
+          "user_driven_loop": false
+        },
+        {
+          "guid": "292e1eb57d092fa146213f7bbf7e41bd",
+          "ranking": 2,
+          "category": 0,
+          "name": "Container",
+          "layout": "vertical",
+          "alignment": "no_alignment",
+          "loop": "",
+          "spacing": "no_spacing",
+          "user_driven_loop": false
+        },
+        {
+          "guid": "d5516f1df1080b8aff6658c01bdb0d64",
+          "ranking": 3,
+          "category": 0,
+          "name": "Container",
+          "layout": "vertical",
+          "alignment": "no_alignment",
+          "loop": "",
+          "spacing": "no_spacing",
+          "user_driven_loop": false
+        },
+        {
+          "guid": "3e7fbff39737534fe25af1b2f8efd980",
+          "ranking": 4,
+          "category": 0,
+          "name": "Container",
+          "layout": "vertical",
+          "alignment": "no_alignment",
+          "loop": "",
+          "spacing": "no_spacing",
+          "user_driven_loop": false
+        },
+        {
+          "guid": "c8b05ca552c389534845252bc558a706",
+          "ranking": 5,
+          "category": 0,
+          "name": "Container",
+          "layout": "vertical",
+          "alignment": "no_alignment",
+          "loop": "",
+          "spacing": "no_spacing",
+          "user_driven_loop": false
+        },
+        {
+          "guid": "2159350625f86b0c6cba52b6b498b095",
+          "ranking": 6,
+          "category": 0,
+          "name": "Container",
+          "layout": "vertical",
+          "alignment": "no_alignment",
+          "loop": "",
+          "spacing": "no_spacing",
+          "user_driven_loop": false
+        }
+      ],
+      "conditions": [],
+      "fields": [
+        {
+          "guid": "a381b6b927052da24f212dd82cde8b17",
+          "name": "Analyze suspicious files with Any.run Form",
+          "description": "",
+          "type": "TITLE",
+          "ranking": 0,
+          "container_guid": "fdc7af78d89a7b236b318836dae4acbe",
+          "width": "AUTO",
+          "width_type": "FLEX_WIDTH",
+          "width_fixed_px": 0,
+          "content": "Analyze suspicious files with Any.run Form"
+        },
+        {
+          "guid": "40f39b75afde0e34138fd8081764128c",
+          "name": "Submit a file for analysis on Any.run",
+          "description": "",
+          "type": "PARAGRAPH",
+          "ranking": 0,
+          "container_guid": "16f4bc6ff9e327a7f000b397acd249d7",
+          "width": "AUTO",
+          "width_type": "FLEX_WIDTH",
+          "width_fixed_px": 0,
+          "content": "Submit a file for analysis on Any.run"
+        },
+        {
+          "guid": "66d63835cb9751cea21b43f6d77b0e9b",
+          "name": "Email",
+          "description": "",
+          "type": "EMAIL",
+          "ranking": 0,
+          "container_guid": "292e1eb57d092fa146213f7bbf7e41bd",
+          "width": "AUTO",
+          "width_type": "FLEX_WIDTH",
+          "width_fixed_px": 0,
+          "required": false,
+          "default_value": null,
+          "validation_pattern": null,
+          "validation_error_message": null
+        },
+        {
+          "guid": "7936645b4e1cd50ee5f6d459b37f64bd",
+          "name": "artifact_id",
+          "description": "",
+          "type": "SHORT_TEXT",
+          "ranking": 0,
+          "container_guid": "d5516f1df1080b8aff6658c01bdb0d64",
+          "width": "AUTO",
+          "width_type": "FLEX_WIDTH",
+          "width_fixed_px": 0,
+          "required": false,
+          "default_value": null,
+          "max_characters": null,
+          "validation_pattern": null,
+          "validation_error_message": null
+        },
+        {
+          "guid": "c0502db185ff2219b6553ca07e91a5fb",
+          "name": "artifact_name",
+          "description": "",
+          "type": "SHORT_TEXT",
+          "ranking": 0,
+          "container_guid": "3e7fbff39737534fe25af1b2f8efd980",
+          "width": "AUTO",
+          "width_type": "FLEX_WIDTH",
+          "width_fixed_px": 0,
+          "required": false,
+          "default_value": null,
+          "max_characters": null,
+          "validation_pattern": null,
+          "validation_error_message": null
+        },
+        {
+          "guid": "2d6dc6c9cddd51f11ffd2e23362f9eb1",
+          "name": "artifact_sample",
+          "description": "File upload",
+          "type": "FILE_UPLOAD",
+          "ranking": 0,
+          "container_guid": "c8b05ca552c389534845252bc558a706",
+          "width": "AUTO",
+          "width_type": "FLEX_WIDTH",
+          "width_fixed_px": 0,
+          "required": true,
+          "validation_pattern": null,
+          "validation_error_message": null
+        },
+        {
+          "guid": "ab78bbabc4606067cec2f722c16a2a6d",
+          "name": "Submit form",
+          "description": "",
+          "type": "BUTTON",
+          "ranking": 0,
+          "container_guid": "2159350625f86b0c6cba52b6b498b095",
+          "width": "AUTO",
+          "width_type": "FLEX_WIDTH",
+          "width_fixed_px": 0,
+          "content": "Submit form",
+          "default_value": null,
+          "style": "primary"
+        }
+      ],
+      "visibility": "world",
+      "agent_guid": "701c70f05f6d753822b6624aac04f408",
+      "success_message": "Thank you for your submission",
+      "loading_message": "",
+      "logo_contents": "iVBORw0KGgoAAAANSUhEUgAAAFQAAAAYCAYAAABk8drWAAAACXBIWXMAAAsT\nAAALEwEAmpwYAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAARCSURB\nVHgB7VhLctpAEB1k7LVyA/kEgRMEn8BQ5e8qcALjE1icAPsEkJW/VeATwA1Q\nTmDlBCE7l3/kPblbTIiMJcVOeaFXBRrN9Mz0vOnu6ZExBQoUKFCgwAdByX4Z\nDAbuw8PDwWw2a+LVk+rAcZxgZWWl02g0QpMSl5eXXRlnvLq62kLfqcmIi4uL\nZqlU+lwulztJ/aGvJ/p+39nZ6cu8R3j30c/f3t7umP8MRwtXV1df7+/vb6iM\nmZNJVJ6enppom5ydnbVNCpAIjENZF786Fn1kMgLE1PDocRz0HyTJQKe2zNOj\nMbBO3o1sZgS2Ybw29KqYd0ZEKMg8AGl980zAS3BhqV0Sv0Qmsho8/iCQi5T6\nXED/WtJmoj7W9/b2Vgk9gXUGWM+JtoF4H/VdFEdK/HvB4UIxuZ+2A2SPlykF\nayLhXkJ9z/wDsJlHaTZld3fXR4ho7O3tHWudRbyrxC+Ca+L4rxFuyXlJ7c7j\n4yOtKcuuuXd3d+0XJvMkZPwFWpm4cV64sLTBawuGB/UYus7Pz7vUB3NOYLGx\nV+EsuIHrT2ydITNCn5/sxyfaKdO0x02Qo8wNY7Yt52ChmeOKraAN2ZxlyBxL\nZb6xFCuvxWN4UE361PGYYn1egli0KSQJxIy42VIfso959rCehplFOYYUkY0M\nCJvn68C5CDUJLi2ho7msExVa3Pk0QL9veJxIuZ3W0pkZIMNYR3GodSBjA3VV\nlsUAPK1HprCOuqoQpmHGRV3FzNfcQvZQpSx06YjcFx3fMW8E7mBK0W6egwEk\n+ObZKkjqIO0hR1Ih/0vfYeGhpmAwgLpUX4OkMQv7+/shCNV0i+GtBrlYX5Kn\n2QLjNTeCMVvby6KkZ7IhsF/E6jyTDhqDfZMBJAHzUHHGP1cOuR8mJ05PTz0z\nPzs2MfZM20BgLAfCXGzmEAYTWbN4YRPy3JQxNusauo1V3hF3yopg4T1TbISS\nB3nSKLhZgL6HLDN8oLxp3ga8vPSTfnD3MTcTzw1ypeHASI6NX88+5Jy1tTWm\nF1luMRw8voHIKeeZbHBTHGCJgGseW4dU7pySrm3m6w62trZa9o/kQcdrkTNw\naw9c8fZVhcV+oqtb5FY0DDgSTw7TKgKT7+gkhH0jyQK6Tt4kG+7eMtmMIAas\nLj6ELULqtsfw8oJ1jdA+YGjgLYvvPCcoR84Yc63+UWiIxucf78HiSsuUZFvL\nTpgF73rzSAI3FMS0MnQJtUCSmD/KdwvdGFfyygnb5NZIBGI8ShzTpwnzUcpa\nWU2oh1p8ytOVmDIsxIlImOkB0w/9AGFDFhaabJhCmcNlH0zgYoGxXHKxHW45\n1LSF86vXQPdQ6sYqy7BmhYlofs7NPpImaZumR5y3jzVvsFLI0nW6ko9WRG6o\naVg0v/nA0JCwjHhx1aktw3jGA+yF8dykr2ZisRVsZLg4XpIcSGWOG+b5ilag\nQIECBZLxG5sJ41WbSDouAAAAAElFTkSuQmCC\n",
+      "logo_filename": "nites.jpeg",
+      "display_logo": false,
+      "icon": ":microscope:",
+      "sso_groups": [
+        "group"
+      ],
+      "display_mode": "bordered",
+      "app": null
+    }
+  ],
+  "tags": [],
+  "time_saved_unit": "minutes",
+  "time_saved_value": 0,
+  "recipients": [],
+  "integration_product": null,
+  "integration_vendor": null,
+  "llm_product_instructions": "",
+  "start_reference": null,
+  "app_endpoints": [],
+  "send_to_stories": []
+}

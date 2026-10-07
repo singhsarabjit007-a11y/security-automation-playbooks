@@ -1,0 +1,1262 @@
+{
+  "schema_version": 30,
+  "standard_lib_version": 97,
+  "action_runtime_version": 88,
+  "name": "URL Enrichment",
+  "description": null,
+  "guid": "d0326018ea99cbcaf7d72fb2151cf78b",
+  "slug": "url_enrichment",
+  "agents": [
+    {
+      "type": "Agents::WebhookAgent",
+      "name": "Webhook",
+      "disabled": false,
+      "description": "Replace the placeholder webhook secret with a newly generated secret before publishing or using this story.",
+      "guid": "3bcc45fce0ce49ff9ed30353aa31336d",
+      "options": {
+        "path": "url-enrichment-template",
+        "secret": "00000000000000000000000000000000",
+        "verbs": "get,post"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::RunScriptAgent",
+      "name": "Normalize URLs",
+      "disabled": false,
+      "description": null,
+      "guid": "094fb12811aa60425a12ffa30040d044",
+      "options": {
+        "language": "python_3_13",
+        "script": "def main(input):\n    raw_urls = input[\"urls\"]\n\n    # Turn the received stringified array into a list.\n    if isinstance(raw_urls, str):\n        text = raw_urls.strip()\n\n        if text.startswith(\"[\") and text.endswith(\"]\"):\n            text = text[1:-1].strip()\n\n        if text:\n            urls = text.split('\",\"')\n            urls = [url.strip().strip('\"').strip(\"'\") for url in urls]\n        else:\n            urls = []\n    else:\n        urls = raw_urls\n\n    valid_urls = []\n    url_number = 1\n\n    for original_url in urls:\n        normalized_url = str(original_url).strip()\n\n        normalized_url = normalized_url.replace(\"[.]\", \".\")\n        normalized_url = normalized_url.replace(\"(.)\", \".\")\n        normalized_url = normalized_url.replace(\"{.}\", \".\")\n        normalized_url = normalized_url.replace(\"<.>\", \".\")\n        normalized_url = normalized_url.replace(\"[dot]\", \".\")\n\n        normalized_url = normalized_url.replace(\"[:]\", \":\")\n        normalized_url = normalized_url.replace(\"(:)\", \":\")\n        normalized_url = normalized_url.replace(\"{:}\", \":\")\n\n        normalized_url = normalized_url.replace(\"/[/]\", \"//\")\n        normalized_url = normalized_url.replace(\"[/]\", \"/\")\n\n        lower_url = normalized_url.lower()\n\n        if lower_url.startswith(\"hxxps://\"):\n            normalized_url = \"https://\" + normalized_url[8:]\n        elif lower_url.startswith(\"hxxp://\"):\n            normalized_url = \"http://\" + normalized_url[7:]\n\n        # Treat bare domains, including www.example.com, as HTTPS URLs.\n        if normalized_url and \" \" not in normalized_url and \"://\" not in normalized_url:\n            normalized_url = \"https://\" + normalized_url\n\n        is_valid = False\n        domain = \"\"\n\n        if normalized_url and \" \" not in normalized_url:\n            parts = normalized_url.split(\"://\", 1)\n\n            if len(parts) == 2:\n                protocol = parts[0].lower()\n                host_part = parts[1].split(\"/\", 1)[0].split(\"?\", 1)[0].split(\"#\", 1)[0]\n                host = host_part.split(\":\", 1)[0]\n\n                if protocol in (\"http\", \"https\") and host and \".\" in host:\n                    is_valid = True\n                    domain = host.lower()\n\n        if is_valid:\n            valid_urls.append({\n                \"attribute_id\": url_number,\n                \"url\": normalized_url,\n                \"domain\": domain\n            })\n            url_number += 1\n\n    return {\n        \"urls\": valid_urls,\n        \"url_count\": len(valid_urls)\n    }",
+        "requirements": "requests==2.34.2",
+        "timeout": "10",
+        "input": {
+          "urls": "<<webhook.body.urls>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Explode URLs",
+      "disabled": false,
+      "description": null,
+      "guid": "e1813818c87b2d58f61e389b13e63764",
+      "options": {
+        "mode": "explode",
+        "path": "=normalize_urls.output.urls",
+        "to": "url",
+        "limit": "500"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "POST Req. VT",
+      "disabled": false,
+      "description": null,
+      "guid": "28dbbb30d55dade214d3340ed47b8d33",
+      "options": {
+        "url": "https://www.virustotal.com/api/v3/urls",
+        "method": "post",
+        "content_type": "form",
+        "headers": {
+          "accept": "application/json",
+          "x-apikey": "<<CREDENTIAL.virustotal>>"
+        },
+        "payload": {
+          "url": "<<explode_urls.url.url>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "GET Req. VT",
+      "disabled": false,
+      "description": null,
+      "guid": "58a030a363cdf3f06a89b19f17be5f6d",
+      "options": {
+        "url": "https://www.virustotal.com/api/v3/analyses/<<post_req_vt.body.data.id>>",
+        "method": "get",
+        "headers": {
+          "accept": "application/json",
+          "x-apikey": "<<CREDENTIAL.virustotal>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Extract values",
+      "disabled": false,
+      "description": null,
+      "guid": "89f875368b3afd6babbcad600008edd0",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": {
+          "attribute_id": "<<explode_urls.url.attribute_id>>",
+          "url": "<<explode_urls.url.url>>",
+          "description": "<<get_req_vt.body.data.attributes.gti_assessment.description>>",
+          "detection_count": "<<get_req_vt.body.data.attributes.stats.malicious>>",
+          "threat_score": "<<get_req_vt.body.data.attributes.gti_assessment.threat_score.value>>",
+          "severity": "<<get_req_vt.body.data.attributes.gti_assessment.severity.value>>",
+          "verdict": "<<get_req_vt.body.data.attributes.gti_assessment.verdict.value>>",
+          "normalised_categories": "<<get_req_vt.body.data.attributes.gti_assessment.contributing_factors.normalised_categories>>",
+          "mitigating_factor_title": "<<get_req_vt.body.data.attributes.gti_assessment.gti_description_cards.MITIGATING_FACTORS[0].title>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Delay 30s",
+      "disabled": false,
+      "description": null,
+      "guid": "801c2671e96aa77213afd46818df5014",
+      "options": {
+        "mode": "delay",
+        "seconds": "30"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Submit a URL to be scanned",
+      "disabled": false,
+      "description": "The submission API allows you to submit a URL to be scanned and set some options for the scan. The response will return a unique scan UUID. With the unique UUID you can retrieve the scan result, screenshot and DOM snapshot after waiting for a while. \n\nLink to documentation: https://urlscan.io/docs/api/",
+      "guid": "ba3b1a86b7eb78f313bcd37ec0c60be7",
+      "options": {
+        "url": "https://urlscan.io/api/v1/scan/",
+        "content_type": "application_json",
+        "method": "post",
+        "headers": {
+          "API-KEY": "<<INPUT.urlscan_credential>>"
+        },
+        "payload": "=LOCAL.final_payload",
+        "local": {
+          "optional_parameters": {
+            "url": "=explode_urls.url.url",
+            "visibility": "=FORCE_ARRAY(INPUT.visibility)[0]",
+            "tags": "=SPLIT(REMOVE(INPUT.tags, \" \"), \",\")",
+            "customagent": "=INPUT.custom_agent",
+            "referer": "=INPUT.referer",
+            "overrideSafety": "=IF(INPUT.override_safety = TRUE, \"yes\", NULL)",
+            "country": "=INPUT.country"
+          },
+          "final_payload": "=REJECT(\n  LOCAL.optional_parameters,\n  LAMBDA(\n    item,\n    OR(\n      item = NULL,\n      IF(\n        OR(\n          TYPE(item) = \"TrueClass\",\n          TYPE(item) = \"FalseClass\",\n          TYPE(item) = \"Integer\"\n        ),\n        IS_EMPTY(TEXT(item)),\n        IS_EMPTY(item)\n      )\n    )\n  )\n)"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": "2f3a4d67e29d612c180d222e547f8a47c15a612d97cfe3bf5f21e6c713e81a0d",
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Delay 30s",
+      "disabled": false,
+      "description": null,
+      "guid": "b2384bf273d913774c21196454bd1dfd",
+      "options": {
+        "mode": "delay",
+        "seconds": "30"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Retrieve result of scan",
+      "disabled": false,
+      "description": "Using the Scan ID received from the Submission API, you can use the Result API to poll for the scan. The most efficient approach would be to wait at least 10 seconds before starting to poll, and then only polling 2-second intervals with an eventual upper timeout in case the scan does not return.\n\nUntil a scan is finished, a 404 response will be returned. If a scan result has been deleted, a 410 response will be returned. Once the scan is finished, a 200 response is returned.\n\nLink to documentation: https://urlscan.io/docs/api/",
+      "guid": "70ac15ad0bbc3f69d7666b7afcafcfc1",
+      "options": {
+        "url": "https://urlscan.io/api/v1/result/<<submit_a_url_to_be_scanned.body.uuid>>/",
+        "method": "get",
+        "headers": {
+          "API-Key": "<<INPUT.urlscan_credential>>"
+        },
+        "log_error_on_status": [
+          "400-403",
+          "405-409",
+          "411-500"
+        ]
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": "d1f57baceeec6f3dfa71d9fbbfa7d54f5ed0ff1c30c09d43e1dc1bac78860548",
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "Screenshot URL",
+      "disabled": false,
+      "description": null,
+      "guid": "94a5e2fe02f2a870eafef99466c43091",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": {
+          "attribute_id": "<<explode_urls.url.attribute_id>>",
+          "normalized_url": "<<explode_urls.url.url>>",
+          "screenshot_url": "<<retrieve_result_of_scan.body.task.screenshotURL>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "HTTP Request",
+      "disabled": false,
+      "description": null,
+      "guid": "0bb6f8a9c4f4bce3dab8ef1a1a6a9656",
+      "options": {
+        "url": "https://urlscan.io/screenshots/<<retrieve_result_of_scan.body.task.uuid>>.png",
+        "method": "get",
+        "headers": {
+          "API-Key": "<<CREDENTIAL.urlscan_credential>>"
+        },
+        "parse_response_as": "file"
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EmailAgent",
+      "name": "Send Email",
+      "disabled": false,
+      "description": "Template placeholder. Configure the recipient, reply-to address, subject, and body before enabling this action.",
+      "guid": "ff9c8c29a03668514ed25e7b5354f215",
+      "options": {
+        "recipients": [
+          "REPLACE_WITH_ALERT_RECIPIENT"
+        ],
+        "reply_to": "REPLACE_WITH_REPLY_TO_ADDRESS",
+        "sender_name": "ABC",
+        "subject": "URL enrichment alert",
+        "body": "Configure a recipient and message before enabling this action."
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "URLScan extract",
+      "disabled": false,
+      "description": null,
+      "guid": "ce82c48f27de9efe85dc1a5a91914463",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": {
+          "target_url": "<<retrieve_result_of_scan.body.page.url>>",
+          "page_title": "<<retrieve_result_of_scan.body.page.title>>",
+          "http_status_code": "<<retrieve_result_of_scan.body.page.status>>",
+          "http_status_text": "<<retrieve_result_of_scan.body.data.requests[0].response.response.statusText>>",
+          "redirect_count": "<<SIZE(retrieve_result_of_scan.body.data.redirects)>>",
+          "redirects": "<<retrieve_result_of_scan.body.data.redirects>>",
+          "domain_age_days": "<<retrieve_result_of_scan.body.page.domainAgeDays>>",
+          "tls_valid_from": "<<retrieve_result_of_scan.body.page.tlsValidFrom>>",
+          "tls_age_days": "<<retrieve_result_of_scan.body.page.tlsAgeDays>>",
+          "tls_issuer": "<<retrieve_result_of_scan.body.page.tlsIssuer>>",
+          "hosting_provider": "<<retrieve_result_of_scan.body.page.server>>",
+          "target_ip": "<<retrieve_result_of_scan.body.page.ip>>",
+          "target_country": "<<retrieve_result_of_scan.body.page.country>>",
+          "external_link_count": "<<retrieve_result_of_scan.body.stats.totalLinks>>",
+          "external_links": "<<retrieve_result_of_scan.body.data.links>>",
+          "external_link_domains": "<<retrieve_result_of_scan.body.lists.linkDomains>>",
+          "unique_ip_count": "<<SIZE(retrieve_result_of_scan.body.lists.ips)>>",
+          "unique_ips": "<<retrieve_result_of_scan.body.lists.ips>>",
+          "screenshot_url": "<<retrieve_result_of_scan.body.task.screenshotURL>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "HTTP Request",
+      "disabled": false,
+      "description": null,
+      "guid": "fd302b53ea0be5c21267241a68a8b009",
+      "options": {
+        "url": "https://api.ip2whois.com/v2?domain=<<explode_urls.url.domain>>&format=json",
+        "method": "get",
+        "headers": {
+          "accept": "application/json",
+          "Authorization": "Bearer <<CREDENTIAL.ip2whois_api_key>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::EventTransformationAgent",
+      "name": "WhoIs extract",
+      "disabled": false,
+      "description": null,
+      "guid": "3fa52fee67480563733a4682f9993bcf",
+      "options": {
+        "mode": "message_only",
+        "loop": false,
+        "payload": {
+          "attribute_id": "<<explode_urls.url.attribute_id>>",
+          "url": "<<explode_urls.url.url>>",
+          "queried_domain": "<<http_request.body.domain>>",
+          "domain_age_days": "<<http_request.body.domain_age>>",
+          "created_date": "<<http_request.body.create_date>>",
+          "updated_date": "<<http_request.body.update_date>>",
+          "expiry_date": "<<http_request.body.expire_date>>",
+          "registrar": "<<http_request.body.registrar.name>>",
+          "domain_status": "<<http_request.body.status>>",
+          "whois_server": "<<http_request.body.whois_server>>",
+          "nameservers": "<<http_request.body.nameservers>>",
+          "registrant_name": "<<http_request.body.registrant.name>>",
+          "registrant_country": "<<http_request.body.registrant.country>>"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::LLMAgent",
+      "name": "AI Agent",
+      "disabled": false,
+      "description": null,
+      "guid": "aae53c77d22b31dc222e5eee622e5667",
+      "options": {
+        "mode": "task",
+        "instructions": "You are a cybersecurity URL-analysis assistant.\r\n\r\nUse only the data provided in the user prompt. Do not invent, assume, or enrich missing information. If a field is missing, state “not available”.\r\n\r\nWrite a concise professional security summary in essay format. Always present the target URL in defanged/sanitized form: replace http with hxxp, https with hxxps, and replace dots in the hostname with [.] so it is not an active link.\r\n\r\nThe essay must cover:\r\n- sanitized target URL\r\n- domain age and certificate age, and whether the domain appears newly created\r\n- hosting provider, target IP, and country\r\n- page title and HTTP status\r\n- totals for external links, unique IPs, and redirects\r\n- VirusTotal detection count, severity, verdict, threat score, categories, and description\r\n- a cautious overall assessment based only on the provided evidence\r\n\r\nAfter the essay, include an “Additional IOCs” section with separate lists for:\r\n- IP addresses\r\n- redirect URLs\r\n- external links\r\n- screenshot URL\r\n\r\nDo not state that a URL is definitively malicious solely from one detection source. Do not include registrant personal data.",
+        "prompt": "Create a URL security-analysis summary from these three data sources.\r\n\r\nWHOIS data:\r\n<<whois_extract>>\r\n\r\nURLScan data:\r\n<<urlscan_extract>>\r\n\r\nVirusTotal data:\r\n<<extract_values>>",
+        "code_analyst_enabled": false,
+        "web_search_enabled": false
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": null,
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    },
+    {
+      "type": "Agents::HTTPRequestAgent",
+      "name": "Send a message",
+      "disabled": false,
+      "description": "Posts a message to a public channel, private channel, or direct message/IM channel.\n\nLink to documentation: https://api.slack.com/methods/chat.postMessage\n\nRequired scope: chat:write",
+      "guid": "ba5642bcff56ade6fb1df8e34be3e91b",
+      "options": {
+        "url": "https://slack.com/api/chat.postMessage",
+        "content_type": "json; charset=utf-8",
+        "method": "post",
+        "payload": "=LOCAL.final_payload",
+        "headers": {
+          "Authorization": "Bearer <<INPUT.slack_credential>>"
+        },
+        "local": {
+          "all_options": {
+            "channel": "<<INPUT.channel_user_id>>",
+            "text": "<<INPUT.message>>",
+            "icon_emoji": "<<INPUT.icon_emoji>>",
+            "icon_url": "<<INPUT.icon_url>>",
+            "link_names": "=INPUT.link_names",
+            "thread_ts": "\"<<INPUT.thread_timestamp>>\"",
+            "username": "<<INPUT.username>>",
+            "metadata": "=INPUT.metadata",
+            "mrkdwn": "=INPUT.markdown",
+            "reply_broadcast": "=INPUT.send_reply_to_channel",
+            "unfurl_links": "=INPUT.unfurl_links",
+            "unfurl_media": "=INPUT.unfurl_media",
+            "parse": "<<INPUT.parse>>"
+          },
+          "final_payload": "=REJECT(\n  LOCAL.all_options,\n  LAMBDA(\n    item,\n    OR(\n      item = NULL,\n      IF(\n        OR(\n          TYPE(item) = \"TrueClass\",\n          TYPE(item) = \"FalseClass\",\n          TYPE(item) = \"Integer\"\n        ),\n        IS_EMPTY(TEXT(item)),\n        IS_EMPTY(item)\n      )\n    )\n  )\n)"
+        }
+      },
+      "reporting": {
+        "time_saved_value": 0,
+        "time_saved_unit": "minutes"
+      },
+      "monitoring": {
+        "monitor_all_events": false,
+        "monitor_failures": true,
+        "monitor_no_events_emitted": null
+      },
+      "template": {
+        "created_from_template_guid": "962a1d96f0c7fe98f124f5b0bee07caec8e8471972ffb8d44728c7802092be50",
+        "created_from_template_version": null,
+        "template_tags": []
+      },
+      "width": null,
+      "schedule": null
+    }
+  ],
+  "diagram_notes": [
+    {
+      "content": "Combines the URLScan and VirusTotal findings into a clear, concise risk assessment and investigation summary.\n",
+      "position": [
+        1140,
+        900
+      ],
+      "guid": "dfff02dc45dc4fabe996bc85f5bc5c3c",
+      "width": 290
+    },
+    {
+      "content": "Tested Placeholder\\\nEmail sent with RAW data from URLScan results and VT. Along with summary from AI\n",
+      "position": [
+        660,
+        1140
+      ],
+      "guid": "438c3979af7f6d719777d6a6502f4837",
+      "width": 290
+    },
+    {
+      "content": "Tested Placeholder\\\nScreenshot sent over at slack\\\nTested Slack functionality\n",
+      "position": [
+        330,
+        945
+      ],
+      "guid": "a00483c28db8d8cb3a454e127a1daad3",
+      "width": 290
+    },
+    {
+      "content": "Normalizes submitted URLs by converting defanged formats (for example, `hxxps://site[.]com`) into standard URLs. Invalid URLs are excluded; valid URLs receive an ID and extracted domain.\n",
+      "position": [
+        1080,
+        180
+      ],
+      "guid": "93c069f5a05102bc8670afc7cf304976",
+      "width": 796
+    },
+    {
+      "content": "Splits the normalized URL list into separate events, so each URL can be enriched and analyzed independently.\n",
+      "position": [
+        1080,
+        270
+      ],
+      "guid": "0aa4b159b7a01705a733e02dcd530bdf",
+      "width": 793
+    },
+    {
+      "content": "Submits each URL to URLScan.io, waits for analysis to finish, and extracts scan details such as redirects, hosting, IPs, TLS data, links, and a screenshot.\n",
+      "position": [
+        315,
+        240
+      ],
+      "guid": "707c97bdb82bc7f94cee1cb8aa8b4a4c",
+      "width": 290
+    },
+    {
+      "content": "Tests the URL against additional OSINT services through HTTP requests and collects the returned enrichment data for further analysis.\n",
+      "position": [
+        1455,
+        390
+      ],
+      "guid": "13e10a52ee40b6ffa5b9546b3d6f467c",
+      "width": 290
+    },
+    {
+      "content": "Submits each URL to VirusTotal, retrieves the analysis results, and extracts the detection count, verdict, severity, threat score, categories, and description.\n",
+      "position": [
+        1095,
+        645
+      ],
+      "guid": "7fff71a363575b71ac088f09f1bf2651",
+      "width": 290
+    },
+    {
+      "content": "**DISCLAIMER**\\\nThe story is not production ready. This was created to test OSINT sources and incorporate AI agent for end summary. This also tested integration with emails and slack. \n",
+      "position": [
+        511,
+        -54
+      ],
+      "guid": "a10445057e883942815b59d87abfc7ee",
+      "width": 960
+    }
+  ],
+  "links": [
+    {
+      "source": 0,
+      "receiver": 1
+    },
+    {
+      "source": 1,
+      "receiver": 2
+    },
+    {
+      "source": 2,
+      "receiver": 3
+    },
+    {
+      "source": 2,
+      "receiver": 7
+    },
+    {
+      "source": 2,
+      "receiver": 14
+    },
+    {
+      "source": 3,
+      "receiver": 6
+    },
+    {
+      "source": 4,
+      "receiver": 5
+    },
+    {
+      "source": 5,
+      "receiver": 16
+    },
+    {
+      "source": 6,
+      "receiver": 4
+    },
+    {
+      "source": 7,
+      "receiver": 8
+    },
+    {
+      "source": 8,
+      "receiver": 9
+    },
+    {
+      "source": 9,
+      "receiver": 10
+    },
+    {
+      "source": 9,
+      "receiver": 13
+    },
+    {
+      "source": 10,
+      "receiver": 11
+    },
+    {
+      "source": 13,
+      "receiver": 16
+    },
+    {
+      "source": 14,
+      "receiver": 15
+    },
+    {
+      "source": 15,
+      "receiver": 16
+    },
+    {
+      "source": 16,
+      "receiver": 12
+    }
+  ],
+  "diagram_layout": "{\"094fb12811aa60425a12ffa30040d044\":[870,195],\"0bb6f8a9c4f4bce3dab8ef1a1a6a9656\":[315,750],\"28dbbb30d55dade214d3340ed47b8d33\":[870,465],\"3bcc45fce0ce49ff9ed30353aa31336d\":[870,120],\"3fa52fee67480563733a4682f9993bcf\":[1200,525],\"58a030a363cdf3f06a89b19f17be5f6d\":[870,660],\"70ac15ad0bbc3f69d7666b7afcafcfc1\":[420,585],\"801c2671e96aa77213afd46818df5014\":[870,570],\"89f875368b3afd6babbcad600008edd0\":[870,750],\"94a5e2fe02f2a870eafef99466c43091\":[315,660],\"aae53c77d22b31dc222e5eee622e5667\":[975,930],\"b2384bf273d913774c21196454bd1dfd\":[420,510],\"ba3b1a86b7eb78f313bcd37ec0c60be7\":[420,420],\"ba5642bcff56ade6fb1df8e34be3e91b\":[330,885],\"ce82c48f27de9efe85dc1a5a91914463\":[510,660],\"e1813818c87b2d58f61e389b13e63764\":[870,270],\"fd302b53ea0be5c21267241a68a8b009\":[1200,450],\"ff9c8c29a03668514ed25e7b5354f215\":[660,1080]}",
+  "story_library_metadata": {},
+  "monitor_failures": true,
+  "synchronous_webhooks_enabled": false,
+  "integrations": [
+    {
+      "action_inputs": [
+        {
+          "name": "URLScan Credential",
+          "description": "",
+          "required": true,
+          "type": "CREDENTIAL",
+          "ranking": 0,
+          "value": "\"=CREDENTIAL.urlscan_io\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Scan UUID",
+          "description": "Unique scan UUID returned from template 'submit a URL to be scanned'",
+          "required": true,
+          "type": "TEXT",
+          "ranking": 1,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        }
+      ],
+      "action_guid": "70ac15ad0bbc3f69d7666b7afcafcfc1",
+      "product": "URLScan.io",
+      "action_options_keys": []
+    },
+    {
+      "action_inputs": [
+        {
+          "name": "URL",
+          "description": "The URL to be scanned",
+          "required": true,
+          "type": "TEXT",
+          "ranking": 0,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Visibility",
+          "description": "Defaults to your configured default visibility",
+          "required": false,
+          "type": "OPTION",
+          "ranking": 1,
+          "value": "[\"public\"]",
+          "options": [
+            "public",
+            "unlisted",
+            "private"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Tags",
+          "description": "User-defined tags to annotate this scan",
+          "required": false,
+          "type": "TEXT",
+          "ranking": 2,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Referer",
+          "description": "Override HTTP referer for this scan",
+          "required": false,
+          "type": "TEXT",
+          "ranking": 3,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Override safety",
+          "description": "If set to any value, this will disable reclassification of URLs with potential PII in them. Use with care!",
+          "required": false,
+          "type": "BOOLEAN",
+          "ranking": 4,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Country",
+          "description": "Specify which country the scan should be performed from (2-Letter ISO-3166-1 alpha-2 country). See the [API endpoint](https://urlscan.io/api/v1/availableCountries/) for possible values.",
+          "required": false,
+          "type": "TEXT",
+          "ranking": 5,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "URLScan Credential",
+          "description": "",
+          "required": true,
+          "type": "CREDENTIAL",
+          "ranking": 6,
+          "value": "\"=CREDENTIAL.urlscan_io\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Custom agent",
+          "description": "Override User-Agent for this scan",
+          "required": false,
+          "type": "TEXT",
+          "ranking": 7,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        }
+      ],
+      "action_guid": "ba3b1a86b7eb78f313bcd37ec0c60be7",
+      "product": "URLScan.io",
+      "action_options_keys": []
+    },
+    {
+      "action_inputs": [
+        {
+          "name": "Channel / User ID",
+          "description": "You can use a channel name (like ‘#general’) or an ID (like ‘C1234567890’). For non-public channels, specify the ID; this includes private channels, multi-person direct message channels (use the group ID), or DMs to a specific user (use the user ID).",
+          "required": true,
+          "type": "TEXT",
+          "ranking": 0,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Message",
+          "description": "Use plain text, or [Slack formatting markup](https://slack.com/help/articles/202288908-Format-your-messages#Markup).",
+          "required": true,
+          "type": "TEXT",
+          "ranking": 1,
+          "value": "\"Hello, *world*!\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Slack Credential",
+          "description": "",
+          "required": false,
+          "type": "CREDENTIAL",
+          "ranking": 2,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": false,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Icon emoji",
+          "description": "Emoji to use as the icon for this message (i.e. :chart_with_upwards_trend:). Overrides Icon URL input.",
+          "required": false,
+          "type": "TEXT",
+          "ranking": 3,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Icon URL",
+          "description": "URL to an image to use as the icon for this message.",
+          "required": false,
+          "type": "TEXT",
+          "ranking": 4,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Link names?",
+          "description": "Find and link user groups. No longer supports linking individual users; use syntax shown in [Mentioning Users](https://api.slack.com/reference/surfaces/formatting#mentioning-users) instead.",
+          "required": false,
+          "type": "BOOLEAN",
+          "ranking": 5,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Markdown",
+          "description": "Select 'no' to disable Slack markup parsing. Enabled by default.",
+          "required": false,
+          "type": "BOOLEAN",
+          "ranking": 6,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Parse",
+          "description": "Change how messages are treated. See [further details](https://api.slack.com/methods/chat.postMessage#formatting).",
+          "required": false,
+          "type": "TEXT",
+          "ranking": 7,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Thread timestamp",
+          "description": "Provide another message's ts value to make this message a reply. Avoid using a reply's ts value; use its parent instead.",
+          "required": false,
+          "type": "TEXT",
+          "ranking": 8,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Unfurl links?",
+          "description": "Select 'yes' to enable unfurling of primarily text-based content.",
+          "required": false,
+          "type": "BOOLEAN",
+          "ranking": 9,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Unfurl media?",
+          "description": "Select 'no' to disable unfurling of media content.",
+          "required": false,
+          "type": "BOOLEAN",
+          "ranking": 10,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Username",
+          "description": "Specify your bot's username that will send the message.",
+          "required": false,
+          "type": "TEXT",
+          "ranking": 11,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Metadata",
+          "description": "JSON object with event_type and event_payload fields, presented as a URL-encoded string. Metadata you post to Slack is accessible to any app or user who is a member of that workspace. ex: {\"event_type\": \"task_created\", \"event_payload\": { \"id\": \"11223\", \"title\": \"Redesign Homepage\"}}",
+          "required": false,
+          "type": "OBJECT",
+          "ranking": 12,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        },
+        {
+          "name": "Send reply to channel?",
+          "description": "Used in conjunction with input 'Thread timestamp' and indicates whether reply should be made visible to everyone in the channel or conversation. Defaults to false.",
+          "required": false,
+          "type": "BOOLEAN",
+          "ranking": 13,
+          "value": "\"\"",
+          "options": [
+            "Option 1",
+            "Option 2"
+          ],
+          "is_collapsed": true,
+          "sub_type": "HTML",
+          "multi_select_enabled": false,
+          "llm_json_schema": "{}"
+        }
+      ],
+      "action_guid": "ba5642bcff56ade6fb1df8e34be3e91b",
+      "product": "Slack",
+      "action_options_keys": []
+    }
+  ],
+  "sections": [
+    {
+      "name": "URLscan Analysis",
+      "color": "primary",
+      "position": [
+        315,
+        390
+      ],
+      "guid": "5ce6a5bb8469cb34c4d1e50479255e8f",
+      "width": 405,
+      "height": 480,
+      "locked": false
+    },
+    {
+      "name": "VT Results",
+      "color": "primary",
+      "position": [
+        735,
+        390
+      ],
+      "guid": "5fdd412a955db643140f152dcc1b4577",
+      "width": 360,
+      "height": 435,
+      "locked": false
+    },
+    {
+      "name": "Testing OSINT tools HTTP Re",
+      "color": "primary",
+      "position": [
+        1140,
+        390
+      ],
+      "guid": "6abf1771fae8643ef5d9460ecc8ff064",
+      "width": 300,
+      "height": 210,
+      "locked": false
+    }
+  ],
+  "parent_only_send_to_story": false,
+  "send_to_story_timeout_enabled": false,
+  "send_to_story_timeout_duration_seconds": null,
+  "keep_events_for": 86400,
+  "reporting_status": true,
+  "send_to_story_enabled": false,
+  "entry_agent_guid": null,
+  "exit_agent_guids": [],
+  "api_entry_action_guids": [],
+  "api_exit_action_guids": [],
+  "send_to_story_access": null,
+  "send_to_story_access_source": 0,
+  "send_to_story_skill_use_requires_confirmation": true,
+  "pages": [],
+  "tags": [],
+  "time_saved_unit": "minutes",
+  "time_saved_value": 0,
+  "recipients": [],
+  "integration_product": null,
+  "integration_vendor": null,
+  "llm_product_instructions": "",
+  "start_reference": null,
+  "app_endpoints": [],
+  "send_to_stories": [],
+  "icon": ":bucket:"
+}
